@@ -1,3 +1,4 @@
+// src/super_admin/layout/SuperAdminLayout.jsx
 import { useSearchParams } from "react-router-dom";
 import SuperAdminSidebar from "../components/SuperAdminSidebar";
 import Header from "../components/Header";
@@ -22,22 +23,16 @@ export default function SuperAdminLayout() {
     switch (section) {
       case "users":
         return <UserManagement operation={operation} id={id} />;
-
       case "roles":
         return <Roles />;
-
       case "permissions":
         return <Permissions />;
-
       case "reports":
         return <Reports />;
-
       case "settings":
         return <Settings />;
-
       case "logs":
         return <Logs />;
-
       case "dashboard":
       default:
         return <Dashboard />;
@@ -56,11 +51,18 @@ export default function SuperAdminLayout() {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <SuperAdminSidebar activeSection={section} />
+      {/* Sidebar */}
+      <SuperAdminSidebar />
 
-      <div className="flex-1 ml-64 flex flex-col">
+      {/* Main Content */}
+      <div className="flex-1 ml-64 flex flex-col min-w-0 overflow-hidden">
+        {/* Header */}
         <Header title={titleMap[section]} />
-        <main className="flex-1 p-6 lg:p-8">{renderPage()}</main>
+
+        {/* Scrollable main content */}
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8">
+          <div className="max-w-7xl mx-auto">{renderPage()}</div>
+        </main>
       </div>
     </div>
   );

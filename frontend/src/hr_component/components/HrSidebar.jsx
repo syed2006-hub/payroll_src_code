@@ -1,5 +1,6 @@
 // src/hr_component/components/HrSidebar.jsx
 import React, { useContext } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   MdDashboard,
   MdPeople,
@@ -11,27 +12,22 @@ import {
 import { AuthContext } from "../../context/AuthContext";
 
 const menu = [
-  "Dashboard",
-  "Employee Management",
-  "Salary Structure",
-  "Attendance",
-  "Reports",
+  { label: "Dashboard", section: "dashboard", icon: <MdDashboard /> },
+  { label: "Employee Management", section: "employee", icon: <MdPeople /> },
+  { label: "Salary Structure", section: "salary", icon: <MdAttachMoney /> },
+  { label: "Attendance", section: "attendance", icon: <MdEvent /> },
+  { label: "Reports", section: "reports", icon: <MdAssessment /> },
 ];
 
-const icons = {
-  Dashboard: <MdDashboard />,
-  "Employee Management": <MdPeople />,
-  "Salary Structure": <MdAttachMoney />,
-  Attendance: <MdEvent />,
-  Reports: <MdAssessment />,
-};
-
-export default function HrSidebar({ activeItem, onSelect }) {
+export default function HrSidebar() {
   const { logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const activeSection = searchParams.get("section") || "dashboard";
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r shadow-sm flex flex-col justify-between">
-      
       {/* Top */}
       <div>
         <div className="p-6 text-xl font-bold text-indigo-600">HR Admin</div>
@@ -39,18 +35,18 @@ export default function HrSidebar({ activeItem, onSelect }) {
         <nav className="px-4 space-y-1">
           {menu.map((item) => (
             <div
-              key={item}
-              onClick={() => onSelect(item)}
+              key={item.section}
+              onClick={() => navigate(`/hradmin?section=${item.section}`)}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition
                 ${
-                  activeItem === item
+                  activeSection === item.section
                     ? "bg-indigo-100 text-indigo-600"
                     : "text-gray-700 hover:bg-gray-100"
                 }
               `}
             >
-              <span className="text-xl">{icons[item]}</span>
-              <span className="font-medium">{item}</span>
+              <span className="text-xl">{item.icon}</span>
+              <span className="font-medium">{item.label}</span>
             </div>
           ))}
         </nav>

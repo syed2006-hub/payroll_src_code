@@ -1,4 +1,5 @@
 import { useContext } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   MdDashboard,
   MdReceiptLong,
@@ -12,32 +13,24 @@ import {
 import { AuthContext } from "../../context/AuthContext";
 
 const menu = [
-  "Dashboard",
-  "Payslips",
-  "Tax Declarations",
-  "Documents",
-  "Notifications",
-  "Profile",
-  "Settings",
+  { label: "Dashboard", section: "dashboard", icon: <MdDashboard /> },
+  { label: "Payslips", section: "payslips", icon: <MdReceiptLong /> },
+  { label: "Tax Declarations", section: "tax", icon: <MdDescription /> },
+  { label: "Documents", section: "documents", icon: <MdFolder /> },
+  { label: "Notifications", section: "notifications", icon: <MdNotifications /> },
+  { label: "Profile", section: "profile", icon: <MdPerson /> },
+  { label: "Settings", section: "settings", icon: <MdSettings /> },
 ];
 
-const icons = {
-  Dashboard: <MdDashboard />,
-  Payslips: <MdReceiptLong />,
-  "Tax Declarations": <MdDescription />,
-  Documents: <MdFolder />,
-  Notifications: <MdNotifications />,
-  Profile: <MdPerson />,
-  Settings: <MdSettings />,
-};
-
-export default function EmpSidebar({ activeItem, onSelect }) {
+export default function EmpSidebar() {
   const { logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const activeSection = searchParams.get("section") || "dashboard";
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r shadow-sm flex flex-col justify-between">
-      
-      {/* Top: Employee Portal + Menu */}
       <div>
         <div className="p-6 text-xl font-bold text-blue-600">
           Employee Portal
@@ -46,24 +39,25 @@ export default function EmpSidebar({ activeItem, onSelect }) {
         <nav className="px-4 space-y-1">
           {menu.map((item) => (
             <div
-              key={item}
-              onClick={() => onSelect(item)}
+              key={item.section}
+              onClick={() =>
+                navigate(`/employee?section=${item.section}`)
+              }
               className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition
                 ${
-                  activeItem === item
+                  activeSection === item.section
                     ? "bg-blue-100 text-blue-600"
                     : "text-gray-700 hover:bg-gray-100"
                 }
               `}
             >
-              <span className="text-xl">{icons[item]}</span>
-              <span className="font-medium">{item}</span>
+              <span className="text-xl">{item.icon}</span>
+              <span className="font-medium">{item.label}</span>
             </div>
           ))}
         </nav>
       </div>
 
-      {/* Bottom: Logout */}
       <div className="p-4 border-t">
         <button
           onClick={logout}

@@ -64,9 +64,9 @@ function App() {
 
           {/* Finance Admin Portal */}
           <Route
-            path="/financeadmin"
+            path="/finance"
             element={
-              <ProtectedRoute allowedRoles={["Finance Admin"]}>
+              <ProtectedRoute allowedRoles={["Finance"]}>
                 <FinanceLayout />
               </ProtectedRoute>
             }

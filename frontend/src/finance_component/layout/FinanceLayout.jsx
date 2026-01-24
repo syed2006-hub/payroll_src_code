@@ -1,5 +1,6 @@
 // src/finance_component/layout/FinanceLayout.jsx
-import React, { useState } from "react";
+import React from "react";
+import { useSearchParams } from "react-router-dom";
 import FinanceSidebar from "../components/FinanceSidebar";
 import Header from "../components/Header";
 
@@ -10,26 +11,36 @@ import Audits from "../pages/finance/Audits";
 import ExportData from "../pages/finance/ExportData";
 
 export default function FinanceLayout() {
-  const [activePage, setActivePage] = useState("Dashboard");
+  const [searchParams] = useSearchParams();
+  const section = searchParams.get("section") || "dashboard";
 
   const renderPage = () => {
-    const pages = {
-      "Financial Reports": <FinancialReports />,
-      Audits: <Audits />,
-      "Export Data": <ExportData />,
-    };
-    return pages[activePage] || <Dashboard />;
+    switch (section) {
+      case "reports":
+        return <FinancialReports />;
+      case "audits":
+        return <Audits />;
+      case "export":
+        return <ExportData />;
+      case "dashboard":
+      default:
+        return <Dashboard />;
+    }
+  };
+
+  const titleMap = {
+    dashboard: "Dashboard",
+    reports: "Financial Reports",
+    audits: "Audits",
+    export: "Export Data",
   };
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 overflow-hidden">
-      
-      {/* Sidebar */}
-      <FinanceSidebar activeItem={activePage} onSelect={setActivePage} />
+    <div className="flex min-h-screen bg-slate-50">
+      <FinanceSidebar />
 
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
-        <Header title={activePage} />
+      <div className="flex-1 ml-64 flex flex-col min-w-0 overflow-hidden">
+        <Header title={titleMap[section]} />
 
         <main className="flex-1 overflow-y-auto p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">{renderPage()}</div>

@@ -51,10 +51,16 @@ const userSchema = new mongoose.Schema({
       pincode: String
     },
     payment: {
-      mode: String,
-      bankAccount: String,
-      ifsc: String
+      mode: {
+        type: String,
+        enum: ["BANK", "CASH", "CHEQUE"]
+      },
+      details: {
+        type: Object,
+        default: {}
+      }
     }
+
   }
 }, { timestamps: true });
 

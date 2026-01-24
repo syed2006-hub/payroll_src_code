@@ -67,8 +67,8 @@ useEffect(() => {
         <tbody className="divide-y">
           {employees.map((emp) => (
             <tr key={emp._id} className="hover:bg-gray-50 transition-colors">
-              <td className="px-6 py-4 font-medium">{emp.name || `${emp.basic?.firstName} ${emp.basic?.lastName}`}</td>
-              <td className="px-6 py-4">{emp.basic?.employeeId || "N/A"}</td>
+              <td className="px-6 py-4 font-medium">{emp.name || `${emp.basic?.firstName} ${emp.basic?.midle} ${emp.basic?.lastName}`}</td>
+              <td className="px-6 py-4">{emp.employeeDetails?.basic?.employeeId || "N/A"}</td>
               <td className="px-6 py-4">{emp.email}</td>
               <td className="px-6 py-4">
                  <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold">

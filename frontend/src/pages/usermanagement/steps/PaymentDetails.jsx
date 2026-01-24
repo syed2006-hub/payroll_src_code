@@ -13,35 +13,52 @@ const PaymentDetails = ({ onBack, onSuccess }) => {
   const payment = employee.payment || {};
 
   const handleFinish = async () => {
-  setError("");
+    setError("");
 
-  // Client validation
-  if (!payment.mode) {
-    return setError("Please select a payment mode");
-  }
-
-  if (payment.mode === "BANK") {
-    const { bankName, accountNumber, ifsc } = payment;
-    if (!bankName || !accountNumber || !ifsc) {
-      return setError("Please fill all bank details");
+    if (!payment.mode) {
+      return setError("Please select a payment mode");
     }
-  }
 
-  try {
-    setLoading(true);
-    await createEmployee(employee);
+    if (payment.mode === "BANK") {
+      const { bankName, accountNumber, ifsc } = payment;
+      if (!bankName || !accountNumber || !ifsc) {
+        return setError("Please fill all bank details");
+      }
+    }
 
-    // ✅ Navigate back like handleCancel
-    const params = new URLSearchParams(searchParams);
-    params.delete("operation");
-    params.delete("id");
-    navigate(`${location.pathname}?${params.toString()}`);
-  } catch (err) {
-    setError(err.message || "Failed to create employee");
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+
+      // ✅ TRANSFORM payment here
+      const payload = {
+        ...employee,
+        payment: {
+          mode: payment.mode,
+          details:
+            payment.mode === "BANK"
+              ? {
+                  bankName: payment.bankName,
+                  accountNumber: payment.accountNumber,
+                  ifsc: payment.ifsc,
+                  accountHolder: payment.accountHolder,
+                }
+              : {}
+        }
+      };
+
+      await createEmployee(payload);
+
+      const params = new URLSearchParams(searchParams);
+      params.delete("operation");
+      params.delete("id");
+      navigate(`${location.pathname}?${params.toString()}`);
+    } catch (err) {
+      setError(err.message || "Failed to create employee");
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
 
   return (
@@ -54,7 +71,7 @@ const PaymentDetails = ({ onBack, onSuccess }) => {
         <select
           className="border rounded p-2 w-full"
           value={payment.mode || ""}
-          onChange={(e) => update("payment", { mode: e.target.value })}
+          onChange={(e) => update("payment", {...payment,  mode: e.target.value })}
         >
           <option value="">Select payment mode</option>
           <option value="BANK">Bank Transfer</option>
@@ -71,7 +88,7 @@ const PaymentDetails = ({ onBack, onSuccess }) => {
             <input
               className="border p-2 rounded w-full"
               onChange={(e) =>
-                update("payment", { bankName: e.target.value })
+                update("payment", {...payment,  bankName: e.target.value })
               }
             />
           </div>
@@ -81,7 +98,7 @@ const PaymentDetails = ({ onBack, onSuccess }) => {
             <input
               className="border p-2 rounded w-full"
               onChange={(e) =>
-                update("payment", { accountNumber: e.target.value })
+                update("payment", {...payment,  accountNumber: e.target.value })
               }
             />
           </div>
@@ -91,7 +108,7 @@ const PaymentDetails = ({ onBack, onSuccess }) => {
             <input
               className="border p-2 rounded w-full"
               onChange={(e) =>
-                update("payment", { ifsc: e.target.value })
+                update("payment", {...payment,  ifsc: e.target.value })
               }
             />
           </div>
@@ -101,7 +118,7 @@ const PaymentDetails = ({ onBack, onSuccess }) => {
             <input
               className="border p-2 rounded w-full"
               onChange={(e) =>
-                update("payment", { accountHolder: e.target.value })
+                update("payment", {...payment,  accountHolder: e.target.value })
               }
             />
           </div>
