@@ -1,43 +1,30 @@
-import React, { useContext } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  MdDashboard,
-  MdPeople,
-  MdSecurity,
-  MdVerifiedUser,
-  MdAssessment,
-  MdSettings,
-  MdHistory,
-  MdLogout,
+  MdDashboard, MdPeople, MdSecurity, MdVerifiedUser,
+  MdAssessment, MdSettings, MdHistory, MdLogout,
 } from "react-icons/md";
 import { AuthContext } from "../../context/AuthContext";
+import { useContext } from "react";
 
 const menu = [
-  "Dashboard",
-  "User Management",
-  "Roles",
-  "Permissions",
-  "Reports",
-  "Settings",
-  "Logs",
+  { label: "Dashboard", section: "dashboard", icon: <MdDashboard /> },
+  { label: "User Management", section: "users", icon: <MdPeople /> },
+  { label: "Roles", section: "roles", icon: <MdSecurity /> },
+  { label: "Permissions", section: "permissions", icon: <MdVerifiedUser /> },
+  { label: "Reports", section: "reports", icon: <MdAssessment /> },
+  { label: "Settings", section: "settings", icon: <MdSettings /> },
+  { label: "Logs", section: "logs", icon: <MdHistory /> },
 ];
 
-const icons = {
-  Dashboard: <MdDashboard />,
-  "User Management": <MdPeople />,
-  Roles: <MdSecurity />,
-  Permissions: <MdVerifiedUser />,
-  Reports: <MdAssessment />,
-  Settings: <MdSettings />,
-  Logs: <MdHistory />,
-};
+export default function SuperAdminSidebar() {
+  const { logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-export default function SuperAdminSidebar({ activeItem, onSelect }) {
-  const { user, logout } = useContext(AuthContext); // ✅ useContext now works
+  const activeSection = searchParams.get("section") || "dashboard";
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r shadow-sm flex flex-col justify-between">
-      
-      {/* Top menu */}
       <div>
         <div className="p-6 text-xl font-bold text-purple-600">
           Super Admin
@@ -46,24 +33,23 @@ export default function SuperAdminSidebar({ activeItem, onSelect }) {
         <nav className="px-4 space-y-1">
           {menu.map((item) => (
             <div
-              key={item}
-              onClick={() => onSelect(item)}
+              key={item.section}
+              onClick={() => navigate(`/superadmin?section=${item.section}`)}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition
                 ${
-                  activeItem === item
+                  activeSection === item.section
                     ? "bg-purple-100 text-purple-600"
                     : "text-gray-700 hover:bg-gray-100"
                 }
               `}
             >
-              <span className="text-xl">{icons[item]}</span>
-              <span className="font-medium">{item}</span>
+              <span className="text-xl">{item.icon}</span>
+              <span className="font-medium">{item.label}</span>
             </div>
           ))}
         </nav>
       </div>
 
-      {/* Logout button at bottom */}
       <div className="p-4 border-t">
         <button
           onClick={logout}

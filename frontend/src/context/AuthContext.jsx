@@ -9,7 +9,8 @@ import { API_URL } from '../config/api';
       const [token, setToken] = useState(localStorage.getItem('token'));
       const [loading, setLoading] = useState(true);
       const navigate = useNavigate();
-    
+      const roleToPath = (role) =>role.toLowerCase().replace(/\s+/g, '');
+
       useEffect(() => {
   const storedToken = localStorage.getItem('token');
   const storedUser = localStorage.getItem('user');
@@ -75,7 +76,7 @@ import { API_URL } from '../config/api';
     if (data.requiresOnboarding) {
       navigate('/onboarding');
     } else {
-      navigate('/dashboard');
+     navigate(`/${roleToPath(data.user.role)}`);
     }
   } catch (err) {
     throw err;

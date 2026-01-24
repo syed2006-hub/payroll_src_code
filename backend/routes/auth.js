@@ -1,7 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
-const User = require('../models/User');
+const User = require('../models/Usermodel');
 const Organization = require('../models/Organization');
 
 const router = express.Router();
@@ -131,15 +131,15 @@ router.post('/login', async (req, res) => {
     }
 
     let requiresOnboarding = false;
-    if (user.role === 'Super Admin' && !user.onboardingCompleted) {
+    if (user.role === 'Super Admin' && user.organizationId) {
       const org = await Organization.findById(user.organizationId);
       requiresOnboarding = !org?.setupCompleted;
     }
 
     const token = jwt.sign(
-      { 
-        userId: user._id, 
-        role: user.role, 
+      {
+        userId: user._id,
+        role: user.role,
         organizationId: user.organizationId,
         onboardingCompleted: user.onboardingCompleted
       },
@@ -162,9 +162,10 @@ router.post('/login', async (req, res) => {
     });
   } catch (err) {
     console.error('Login error:', err);
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
+
 
 // ==================== LOGOUT ====================
 router.post('/logout', (req, res) => {

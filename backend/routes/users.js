@@ -1,206 +1,208 @@
 const express = require('express');
 const { authenticate, authorize } = require('../middleware/auth');
-const User = require('../models/User');
+const User = require('../models/Usermodel');
+
 const router = express.Router();
 
-// Get all users in the organization (Super Admin only)
-router.get('/', authenticate, authorize('Super Admin'), async (req, res) => {
-  try {
-    const users = await User.find({ organizationId: req.user.organizationId })
-      .select('-password')
-      .sort({ createdAt: -1 });
-    
-    res.json({ users });
-  } catch (err) {
-    console.error('Get users error:', err);
-    res.status(500).json({ message: 'Server error', error: err.message });
+/**
+ * GET ALL USERS (Super Admin + HR Admin)
+ */
+router.get(
+  '/',
+  authenticate,
+  authorize('Super Admin', 'HR Admin'),
+  async (req, res) => {
+    try {
+      const users = await User.find({
+        organizationId: req.user.organizationId,
+        role: { $ne: 'Super Admin' } // hide super admin from list
+      })
+        .select('-password')
+        .sort({ createdAt: -1 });
+
+      res.status(200).json({
+        success: true,
+        message: 'Users fetched successfully',
+        data: users
+      });
+    } catch (err) {
+      console.error('Get users error:', err);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch users'
+      });
+    }
   }
+);
+
+/**
+ * ADD USER (Super Admin only)
+ */ 
+router.get("/check-existence", authenticate, authorize("Super Admin", "HR Admin"), async (req, res) => {
+  const { email, employeeId } = req.query;
+
+  const exists = await User.findOne({
+    $or: [
+      email ? { email } : null,
+      employeeId ? { employeeId } : null
+    ].filter(Boolean)
+  });
+
+  res.json({ exists: !!exists });
 });
-
-// Add new user (Super Admin only)
-router.post('/add', authenticate, authorize('Super Admin'), async (req, res) => {
-  console.log('📝 Add user request received');
-  console.log('📦 Request body:', req.body);
-
-  try {
-    const { name, email, password, role, profileImage } = req.body;
-
-    // Validation
-    if (!name || !email || !password || !role) {
-      return res.status(400).json({ message: 'Name, email, password, and role are required' });
-    }
-
-    // Validate role
-    const validRoles = ['Payroll Admin', 'HR Admin', 'Employee', 'Finance'];
-    if (!validRoles.includes(role)) {
-      return res.status(400).json({ message: 'Invalid role. Must be Payroll Admin, HR Admin, Employee, or Finance' });
-    }
-
-    // Check if email already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Email already registered' });
-    }
-
-    // Password validation
-    if (password.length < 8) {
-      return res.status(400).json({ message: 'Password must be at least 8 characters' });
-    }
-
-    console.log('✅ Validation passed, creating user...');
-
-    // Create new user
-    const newUser = await User.create({
-      name,
-      email,
-      password,
-      role,
-      profileImage: profileImage || '',
-      organizationId: req.user.organizationId,
-      onboardingCompleted: true // Other roles don't need onboarding
-    });
-
-    console.log('✅ User created successfully:', newUser._id);
-
-    res.status(201).json({
-      message: 'User created successfully',
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        profileImage: newUser.profileImage
+router.post(
+  '/',
+  authenticate,
+  authorize('Super Admin'),
+  async (req, res) => {
+    try {
+      const { basic } = req.body;   
+      
+      // Validation
+      if (!basic.firstName || !basic.password || !basic.email || !basic.department ) {
+        return res.status(400).json({
+          success: false,
+          message: 'First name, email, department (role) are required'
+        });
       }
-    });
-  } catch (err) {
-    console.error('❌ Add user error:', err);
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
 
-// Update user (Super Admin only)
-router.put('/:userId', authenticate, authorize('Super Admin'), async (req, res) => {
-  try {
-    const { name, email, role, profileImage } = req.body;
-    const { userId } = req.params;
+      // Combine names
+      const fullName = [basic.firstName, basic.middleName, basic.lastName].filter(Boolean).join(' ');
 
-    const user = await User.findOne({ 
-      _id: userId, 
-      organizationId: req.user.organizationId 
-    });
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Don't allow changing Super Admin role
-    if (user.role === 'Super Admin') {
-      return res.status(403).json({ message: 'Cannot modify Super Admin' });
-    }
-
-    // Update fields
-    if (name) user.name = name;
-    if (email) user.email = email;
-    if (role) user.role = role;
-    if (profileImage !== undefined) user.profileImage = profileImage;
-
-    await user.save();
-
-    res.json({
-      message: 'User updated successfully',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        profileImage: user.profileImage
+      // Check if email or employeeId already exists
+      const existingUser = await User.findOne({
+        $or: [
+          { email: basic.email },
+          { 'employeeDetails.basic.employeeId': basic.employeeId }
+        ]
+      });
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          message: 'Email or Employee ID already exists'
+        });
       }
-    });
-  } catch (err) {
-    console.error('Update user error:', err);
-    res.status(500).json({ message: 'Server error', error: err.message });
+
+      // Create user
+      const user = await User.create({
+        name: fullName,
+        email: basic.email,
+        password: basic.password,
+        role: basic.department, // mapping department as role
+        profileImage:'',
+        organizationId: req.user.organizationId,
+        onboardingCompleted: true,
+        employeeDetails: req.body
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Employee created successfully',
+        data: user
+      });
+    } catch (err) {
+      console.error('Add employee error:', err);
+      res.status(500).json({
+        success: false,
+        message:`${err.message}` +' Failed to create employee'
+      });
+    }
   }
-});
+);
 
-// Add new user with optional Google linking
-router.post('/add', authenticate, authorize('Super Admin'), async (req, res) => {
-  try {
-    const { name, email, password, role, profileImage, allowGoogleLogin } = req.body;
 
-    if (!name || !email || !role) {
-      return res.status(400).json({ message: 'Name, email, and role are required' });
-    }
+/**
+ * UPDATE USER
+ */
+router.put(
+  '/:userId',
+  authenticate,
+  authorize('Super Admin'),
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
 
-    // If not allowing Google login, password is required
-    if (!allowGoogleLogin && !password) {
-      return res.status(400).json({ message: 'Password is required' });
-    }
+      const user = await User.findOne({
+        _id: userId,
+        organizationId: req.user.organizationId
+      });
 
-    const validRoles = ['Payroll Admin', 'HR Admin', 'Employee', 'Finance'];
-    if (!validRoles.includes(role)) {
-      return res.status(400).json({ message: 'Invalid role' });
-    }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Email already registered' });
-    }
-
-    if (password && password.length < 8) {
-      return res.status(400).json({ message: 'Password must be at least 8 characters' });
-    }
-
-    const newUser = await User.create({
-      name,
-      email,
-      password: password || undefined, // Don't set password if allowing Google
-      role,
-      profileImage: profileImage || '',
-      organizationId: req.user.organizationId,
-      onboardingCompleted: true
-    });
-
-    res.status(201).json({
-      message: 'User created successfully',
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
       }
-    });
-  } catch (err) {
-    console.error('Add user error:', err);
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
 
-// Delete user (Super Admin only)
-router.delete('/:userId', authenticate, authorize('Super Admin'), async (req, res) => {
-  try {
-    const { userId } = req.params;
+      if (user.role === 'Super Admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Cannot modify Super Admin'
+        });
+      }
 
-    const user = await User.findOne({ 
-      _id: userId, 
-      organizationId: req.user.organizationId 
-    });
+      Object.assign(user, req.body);
+      await user.save();
 
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      res.status(200).json({
+        success: true,
+        message: 'User updated successfully',
+        data: user
+      });
+    } catch (err) {
+      console.error('Update user error:', err);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update user'
+      });
     }
-
-    // Don't allow deleting Super Admin
-    if (user.role === 'Super Admin') {
-      return res.status(403).json({ message: 'Cannot delete Super Admin' });
-    }
-
-    await User.findByIdAndDelete(userId);
-
-    res.json({ message: 'User deleted successfully' });
-  } catch (err) {
-    console.error('Delete user error:', err);
-    res.status(500).json({ message: 'Server error', error: err.message });
   }
-});
+);
+
+/**
+ * DELETE USER
+ */
+router.delete(
+  '/:userId',
+  authenticate,
+  authorize('Super Admin'),
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      const user = await User.findOne({
+        _id: userId,
+        organizationId: req.user.organizationId
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      if (user.role === 'Super Admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Cannot delete Super Admin'
+        });
+      }
+
+      await user.deleteOne();
+
+      res.status(200).json({
+        success: true,
+        message: 'User deleted successfully'
+      });
+    } catch (err) {
+      console.error('Delete user error:', err);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete user'
+      });
+    }
+  }
+);
 
 module.exports = router;

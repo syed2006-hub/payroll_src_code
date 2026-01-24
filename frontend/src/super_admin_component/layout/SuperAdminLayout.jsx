@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import SuperAdminSidebar from "../components/SuperAdminSidebar";
 import Header from "../components/Header";
 
-// Super Admin pages
-import Dashboard from "../pages/super_admin/Dashboard";
-import UserManagement from "../pages/super_admin/UserManagement";
+// Pages
+import Dashboard from "../pages/super_admin/Dashboard"; 
+import UserManagement from "../../pages/usermanagement/UserManagement";
 import Roles from "../pages/super_admin/Roles";
 import Permissions from "../pages/super_admin/Permissions";
 import Reports from "../pages/super_admin/Reports";
@@ -12,34 +12,54 @@ import Settings from "../pages/super_admin/Settings";
 import Logs from "../pages/super_admin/Logs";
 
 export default function SuperAdminLayout() {
-  const [activePage, setActivePage] = useState("Dashboard");
+  const [searchParams] = useSearchParams();
+
+  const section = searchParams.get("section") || "dashboard";
+  const operation = searchParams.get("operation") || "view";
+  const id = searchParams.get("id");
 
   const renderPage = () => {
-    switch (activePage) {
-      case "User Management":
-        return <UserManagement />;
-      case "Roles":
+    switch (section) {
+      case "users":
+        return <UserManagement operation={operation} id={id} />;
+
+      case "roles":
         return <Roles />;
-      case "Permissions":
+
+      case "permissions":
         return <Permissions />;
-      case "Reports":
+
+      case "reports":
         return <Reports />;
-      case "Settings":
+
+      case "settings":
         return <Settings />;
-      case "Logs":
+
+      case "logs":
         return <Logs />;
+
+      case "dashboard":
       default:
         return <Dashboard />;
     }
   };
 
+  const titleMap = {
+    dashboard: "Dashboard",
+    users: "User Management",
+    roles: "Roles",
+    permissions: "Permissions",
+    reports: "Reports",
+    settings: "Settings",
+    logs: "Logs",
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <SuperAdminSidebar activeItem={activePage} onSelect={setActivePage} />
+      <SuperAdminSidebar activeSection={section} />
 
       <div className="flex-1 ml-64 flex flex-col">
-        <Header title={activePage} />
-
+        <Header title={titleMap[section]} />
         <main className="flex-1 p-6 lg:p-8">{renderPage()}</main>
       </div>
     </div>

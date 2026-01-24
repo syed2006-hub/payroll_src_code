@@ -10,6 +10,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useContext(AuthContext);
   const [searchParams] = useSearchParams();
+  const roleToPath = (role) =>role.toLowerCase().replace(/\s+/g, '');
 
   // Check for OAuth errors or token in URL
   useEffect(() => {
@@ -34,7 +35,7 @@ const Login = () => {
         organizationId: user.organizationId,
         onboardingCompleted: user.onboardingCompleted
       }));
-      window.location.href = user.onboardingCompleted ? '/dashboard' : '/onboarding';
+      window.location.href = user.onboardingCompleted ? `/${roleToPath(user.role)}` : '/onboarding';
     }
   }, [searchParams]);
 
