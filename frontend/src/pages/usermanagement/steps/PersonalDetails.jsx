@@ -45,13 +45,13 @@ const PersonalDetails = ({ onNext, onBack }) => {
         <input
           className="border p-2 w-full rounded"
           placeholder="Address Line 1"
-          onChange={e => update("personal", { ...personal, addr1: e.target.value })}
+          onChange={e => update("personal", { ...personal, addressLine1: e.target.value })}
         />
 
         <input
           className="border p-2 w-full rounded"
           placeholder="Address Line 2"
-          onChange={e => update("personal", { ...personal, addr2: e.target.value })}
+          onChange={e => update("personal", { ...personal, addressLine2: e.target.value })}
         />
 
         <div className="grid grid-cols-3 gap-4">

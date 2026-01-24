@@ -158,6 +158,38 @@ router.put(
     }
   }
 );
+/**
+ * UPDATE USER STATUS
+ */
+router.patch(
+  "/:id/status",
+  authenticate,
+  authorize("Super Admin", "HR Admin"),
+  async (req, res) => {
+    try {
+      const { status } = req.body;
+
+      if (!["Active", "Inactive"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const user = await User.findByIdAndUpdate(
+        req.params.id,
+        { status },
+        { new: true }
+      );
+
+      if (!user) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+
+      res.json({ message: "Status updated", user });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to update status" });
+    }
+  }
+);
 
 /**
  * DELETE USER

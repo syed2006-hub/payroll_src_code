@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-
+import { MdPeople } from "react-icons/md";
 const EmployeeList = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,9 +28,38 @@ const fetchEmployees = async () => {
   }
 };
 
-useEffect(() => {
-  fetchEmployees();
-}, []);
+    useEffect(() => {
+      fetchEmployees();
+    }, []);
+  const toggleStatus = async (id, currentStatus) => {
+    const token = localStorage.getItem("token");
+    const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
+
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/users/${id}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ status: newStatus })
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to update status");
+
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp._id === id ? { ...emp, status: newStatus } : emp
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update employee status");
+    }
+  };
 
   const deleteEmployee = async (id) => {
     if (!window.confirm("Are you sure you want to delete this employee?")) return;
@@ -62,12 +91,13 @@ useEffect(() => {
             <th className="px-6 py-4">Email</th>
             <th className="px-6 py-4">Role</th>
             <th className="px-6 py-4">Actions</th>
+            <th className="px-6 py-4">Status</th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {employees.map((emp) => (
             <tr key={emp._id} className="hover:bg-gray-50 transition-colors">
-              <td className="px-6 py-4 font-medium">{emp.name || `${emp.basic?.firstName} ${emp.basic?.midle} ${emp.basic?.lastName}`}</td>
+              <td className="px-6 py-4 font-medium">{emp.name || `${emp.employeeDetails?.basic?.firstName} ${emp.employeeDetails?.basic?.midle} ${emp.employeeDetails?.basic?.lastName}`}</td>
               <td className="px-6 py-4">{emp.employeeDetails?.basic?.employeeId || "N/A"}</td>
               <td className="px-6 py-4">{emp.email}</td>
               <td className="px-6 py-4">
@@ -83,6 +113,25 @@ useEffect(() => {
                   Delete
                 </button>
               </td>
+              
+              <td className="px-6 py-4 flex gap-3 items-center">
+              {/* Status Toggle */}
+              <button
+                onClick={() => toggleStatus(emp._id, emp.status)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition
+                  ${
+                    emp.status === "Active"
+                      ? "bg-green-100 text-green-700 hover:bg-green-200"
+                      : "bg-red-100 text-red-700 hover:bg-red-200"
+                  }
+                `}
+              >
+                {emp.status || "Active"}
+              </button>
+
+              
+            </td>
+
             </tr>
           ))}
         </tbody>

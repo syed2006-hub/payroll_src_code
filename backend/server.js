@@ -8,6 +8,7 @@ const passport = require('./config/passport'); // ADD THIS
 const authRoutes = require('./routes/auth');
 const onboardingRoutes = require('./routes/onboarding');
 const userRoutes = require('./routes/users');
+const superadminRoutes =require('./routes/superadmin')
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use(passport.session());
 app.use('/api/auth', authRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/superadmin', superadminRoutes);
 
 // Test route
 app.get('/', (req, res) => {
