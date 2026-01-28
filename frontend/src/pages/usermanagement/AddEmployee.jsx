@@ -39,12 +39,16 @@ const AddEmployee = () => {
     <EmployeeFormProvider>
       <div className="max-w-6xl mx-auto p-8 bg-white rounded shadow">
         <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={handleCancel}
-            className="text-sm text-gray-600 hover:text-gray-900"
-          >
-            ✕ Cancel
-          </button>
+              {/* The Cancel Button */}
+              <button
+                onClick={handleCancel}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+
+              
+         
 
           <h1 className="text-xl font-bold">Add Employee</h1>
         </div>

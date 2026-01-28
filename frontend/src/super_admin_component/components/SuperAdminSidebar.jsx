@@ -15,7 +15,7 @@ import { AuthContext } from "../../context/AuthContext";
 
 const menu = [
   { label: "Dashboard", section: "dashboard", icon: <MdDashboard /> },
-  { label: "User Management", section: "users", icon: <MdPeople /> },
+  { label: "Employees", section: "users", icon: <MdPeople /> },
   { label: "Roles", section: "roles", icon: <MdSecurity /> },
   { label: "Permissions", section: "permissions", icon: <MdVerifiedUser /> },
   { label: "Reports", section: "reports", icon: <MdAssessment /> },

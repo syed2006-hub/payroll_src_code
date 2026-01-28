@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const onboardingRoutes = require('./routes/onboarding');
 const userRoutes = require('./routes/users');
 const superadminRoutes =require('./routes/superadmin')
+const settingsRoutes =require('./routes/settings.route')
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/superadmin', superadminRoutes);
+app.use('/api/settings',settingsRoutes)
 
 // Test route
 app.get('/', (req, res) => {

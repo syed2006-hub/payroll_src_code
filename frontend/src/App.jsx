@@ -2,10 +2,13 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
 import Unauthorized from "./pages/Unauthorized";
+
+
 import SuperAdminLayout from "./super_admin_component/layout/SuperAdminLayout";
 import HrAdminLayout from "./hr_component/layout/HrAdminLayout"
 import PayrollAdminLayout from "./payroll_component/layout/PayrollAdminLayout"
