@@ -1,23 +1,14 @@
 import { useState, useEffect } from "react";
-import api from "../../../utils/api"; // Adjust path as needed
+import api from "../../../utils/api"; 
 import { 
-  Save, 
-  Building2, 
-  ShieldCheck, 
-  Users, 
-  CheckCircle, 
-  AlertCircle, 
-  Edit2, 
-  X,
-  MapPin,
-  Home
-} from "lucide-react";
+  MdSave, MdBusiness, MdShield, MdGroup, 
+  MdCheckCircle, MdErrorOutline, MdEdit, MdClose,
+  MdLocationOn, MdHome, MdInfoOutline
+} from "react-icons/md";
 
 export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: "", text: "" });
-  
-  // Toggle for Edit Mode
   const [isEditing, setIsEditing] = useState(false);
 
   // 1. Company Profile State
@@ -26,7 +17,7 @@ export default function Settings() {
     industry: "",
     financialYearStart: "",
     financialYearEnd: "",
-    location: "", // Added Location
+    location: "",
   });
 
   // 2. Statutory Config State
@@ -34,7 +25,7 @@ export default function Settings() {
     pf: { enabled: false, employeeContribution: 0, employerContribution: 0 },
     esi: { enabled: false, employeeContribution: 0, employerContribution: 0, wageLimit: 0 },
     professionalTax: { enabled: false, state: "" },
-    hra: { enabled: false, percentageOfBasic: 0, taxExempt: false }, // Added HRA
+    hra: { enabled: false, percentageOfBasic: 0, taxExempt: false },
   });
 
   // 3. Access Levels State
@@ -44,23 +35,20 @@ export default function Settings() {
     finance: { canViewReports: false, canExportData: false },
   });
 
-  // --- FETCH DATA ---
+  // --- FETCH DATA (Logic strictly preserved) ---
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await api.get("/settings/status");
         const org = res?.data?.organization;
-
         if (org) {
           setCompanyProfile({
             companyName: org.companyName || "",
             industry: org.industry || "",
             financialYearStart: org.financialYear?.startMonth || "",
             financialYearEnd: org.financialYear?.endMonth || "",
-            // Map the first location from the array to the text string
             location: org.location && org.location.length > 0 ? org.location[0] : "",
           });
-
           setStatutory({
             pf: { 
               enabled: org.statutoryConfig?.pf?.enabled ?? false, 
@@ -83,7 +71,6 @@ export default function Settings() {
               taxExempt: org.statutoryConfig?.hra?.taxExempt ?? false
             }
           });
-
           setAccessLevels({
             payrollAdmin: {
               canProcessPayroll: org.accessLevels?.payrollAdmin?.canProcessPayroll ?? false,
@@ -109,461 +96,272 @@ export default function Settings() {
     fetchData();
   }, []);
 
-  // --- SAVE HANDLERS ---
+  // --- SAVE HANDLERS (Logic strictly preserved) ---
   const saveCompanyProfile = async () => {
     try {
       setMessage({ type: "", text: "" });
       const payload = {
         companyName: companyProfile.companyName,
         industry: companyProfile.industry,
-        financialYear: {
-          startMonth: companyProfile.financialYearStart,
-          endMonth: companyProfile.financialYearEnd
-        },
-        // Wrap location back into an array for the backend
+        financialYear: { startMonth: companyProfile.financialYearStart, endMonth: companyProfile.financialYearEnd },
         location: [companyProfile.location] 
       };
       await api.post("/settings/company-profile", payload);
-      setMessage({ type: "success", text: "Company profile updated successfully!" });
+      setMessage({ type: "success", text: "Profile updated successfully!" });
       setIsEditing(false); 
-    } catch (err) {
-      setMessage({ type: "error", text: "Failed to update company profile." });
-    }
+    } catch (err) { setMessage({ type: "error", text: "Failed to update profile." }); }
   };
 
   const saveStatutory = async () => {
     try {
       setMessage({ type: "", text: "" });
       await api.post("/settings/statutory-setup", statutory);
-      setMessage({ type: "success", text: "Statutory configuration updated!" });
+      setMessage({ type: "success", text: "Statutory configuration saved!" });
       setIsEditing(false);
-    } catch (err) {
-      setMessage({ type: "error", text: "Failed to update statutory settings." });
-    }
+    } catch (err) { setMessage({ type: "error", text: "Failed to update statutory." }); }
   };
 
   const saveAccessLevels = async () => {
     try {
       setMessage({ type: "", text: "" });
       await api.post("/settings/access-levels", accessLevels);
-      setMessage({ type: "success", text: "Access levels updated!" });
+      setMessage({ type: "success", text: "Access levels synchronized!" });
       setIsEditing(false);
-    } catch (err) {
-      setMessage({ type: "error", text: "Failed to update access levels." });
-    }
+    } catch (err) { setMessage({ type: "error", text: "Failed to update access." }); }
   };
 
-  // Helper to manage Edit Toggle
   const toggleEditMode = () => {
-    if (isEditing) {
-      setMessage({ type: "", text: "" });
-    }
+    if (isEditing) setMessage({ type: "", text: "" });
     setIsEditing(!isEditing);
   };
 
-  if (loading) return <div className="p-10 text-center text-gray-500">Loading settings...</div>;
+  // UI Variable constants
+  const labelClass = "text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1";
+  const inputClass = "w-full px-4 py-2.5 rounded-xl text-sm font-medium transition-all outline-none border border-slate-200 bg-slate-50 text-slate-700 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:opacity-60 disabled:cursor-not-allowed";
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center p-20 space-y-4">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+      <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Initialising Settings...</p>
+    </div>
+  );
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
+    <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-10 animate-in fade-in duration-500">
       
       {/* HEADER */}
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-slate-200">
         <div>
-           <h1 className="text-3xl font-bold text-gray-800">Settings</h1>
-           <p className="text-gray-500">Manage your organization configurations</p>
+           <h1 className="text-3xl font-black text-slate-800 tracking-tight">Organization Settings</h1>
+           <p className="text-sm font-medium text-slate-500">Configure your global business rules and compliance.</p>
         </div>
         
-        <div className="flex flex-col items-end gap-3">
-            {/* EDIT TOGGLE BUTTON */}
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 w-full md:w-auto">
+            {message.text && (
+              <div className={`px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-black uppercase tracking-widest animate-in slide-in-from-top-2 ${message.type === 'error' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
+                  {message.type === 'error' ? <MdErrorOutline size={18}/> : <MdCheckCircle size={18}/>}
+                  {message.text}
+              </div>
+            )}
             <button
                 onClick={toggleEditMode}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition shadow-sm ${
-                    isEditing 
-                    ? "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50" 
-                    : "bg-blue-600 text-white hover:bg-blue-700"
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-black text-sm transition-all shadow-lg active:scale-95 w-full sm:w-auto ${
+                  isEditing ? "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-none" : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200"
                 }`}
             >
-                {isEditing ? (
-                    <><X size={18} /> Cancel Editing</>
-                ) : (
-                    <><Edit2 size={18} /> Edit Settings</>
-                )}
+                {isEditing ? <><MdClose size={20} /> Cancel Editing</> : <><MdEdit size={20} /> Edit Configurations</>}
             </button>
-
-            {message.text && (
-            <div className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm ${message.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
-                {message.type === 'error' ? <AlertCircle size={16}/> : <CheckCircle size={16}/>}
-                {message.text}
-            </div>
-            )}
         </div>
       </div>
 
-      {/* 1. COMPANY PROFILE */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center gap-2">
-          <Building2 className="text-blue-600" size={20} />
-          <h2 className="text-lg font-semibold text-gray-800">Company Profile</h2>
-        </div>
-        
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Company Name</label>
-            <input 
-              disabled={!isEditing}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-              value={companyProfile.companyName}
-              onChange={(e) => setCompanyProfile({...companyProfile, companyName: e.target.value})}
-            />
+      {/* 1. COMPANY PROFILE - Glass-Slab Style */}
+      <div className="relative overflow-hidden rounded-3xl p-0.5 bg-gradient-to-br from-indigo-500 to-purple-600 shadow-xl shadow-indigo-100/50">
+        <div className="bg-white/95 backdrop-blur-md rounded-[22px] overflow-hidden">
+          <div className="p-6 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
+            <MdBusiness className="text-indigo-600" size={24} />
+            <h2 className="text-lg font-black text-slate-800 tracking-tight">Company Profile</h2>
           </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Industry</label>
-            <input 
-              disabled={!isEditing}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-              value={companyProfile.industry}
-              onChange={(e) => setCompanyProfile({...companyProfile, industry: e.target.value})}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Financial Year Start</label>
-            <select 
-              disabled={!isEditing}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-              value={companyProfile.financialYearStart}
-              onChange={(e) => setCompanyProfile({...companyProfile, financialYearStart: e.target.value})}
-            >
-              <option value="">Select Month</option>
-              {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Financial Year End</label>
-            <select 
-              disabled={!isEditing}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-              value={companyProfile.financialYearEnd}
-              onChange={(e) => setCompanyProfile({...companyProfile, financialYearEnd: e.target.value})}
-            >
-              <option value="">Select Month</option>
-              {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
-
-          {/* Location Input - Full Width */}
-          <div className="space-y-1 md:col-span-2">
-            <div className="flex items-center gap-2 mb-1">
-                <MapPin size={16} className="text-gray-500" />
-                <label className="text-sm font-medium text-gray-700">Location / Address</label>
+          
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1">
+              <label className={labelClass}>Organization Name</label>
+              <input disabled={!isEditing} className={inputClass} value={companyProfile.companyName} onChange={(e) => setCompanyProfile({...companyProfile, companyName: e.target.value})}/>
             </div>
-            <textarea 
-              disabled={!isEditing}
-              rows={2}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed resize-none"
-              value={companyProfile.location}
-              onChange={(e) => setCompanyProfile({...companyProfile, location: e.target.value})}
-              placeholder="Enter full organization address..."
-            />
-          </div>
-        </div>
-        
-        {isEditing && (
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
-                <button onClick={saveCompanyProfile} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition">
-                    <Save size={18} /> Save Profile
-                </button>
+            <div className="space-y-1">
+              <label className={labelClass}>Industry Type</label>
+              <input disabled={!isEditing} className={inputClass} value={companyProfile.industry} onChange={(e) => setCompanyProfile({...companyProfile, industry: e.target.value})}/>
             </div>
-        )}
+            <div className="space-y-1">
+              <label className={labelClass}>Financial Year Start</label>
+              <select disabled={!isEditing} className={inputClass} value={companyProfile.financialYearStart} onChange={(e) => setCompanyProfile({...companyProfile, financialYearStart: e.target.value})}>
+                <option value="">Select Month</option>
+                {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className={labelClass}>Financial Year End</label>
+              <select disabled={!isEditing} className={inputClass} value={companyProfile.financialYearEnd} onChange={(e) => setCompanyProfile({...companyProfile, financialYearEnd: e.target.value})}>
+                <option value="">Select Month</option>
+                {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="md:col-span-2 space-y-1">
+              <label className={labelClass}>Headquarters Location</label>
+              <div className="relative">
+                <MdLocationOn className="absolute left-4 top-3 text-slate-400" size={20} />
+                <textarea disabled={!isEditing} rows={2} className={`${inputClass} pl-12 resize-none`} value={companyProfile.location} onChange={(e) => setCompanyProfile({...companyProfile, location: e.target.value})} placeholder="Full registered address..."/>
+              </div>
+            </div>
+          </div>
+          {isEditing && (
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button onClick={saveCompanyProfile} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2.5 rounded-xl font-black text-sm shadow-lg shadow-indigo-100 active:scale-95 transition-all">
+                <MdSave size={20} /> Save Profile Changes
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 2. STATUTORY CONFIG */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center gap-2">
-          <ShieldCheck className="text-green-600" size={20} />
-          <h2 className="text-lg font-semibold text-gray-800">Statutory Configuration</h2>
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden relative">
+        <div className="absolute right-0 top-0 h-full w-1.5 bg-emerald-500" />
+        <div className="p-6 border-b border-slate-100 flex items-center gap-3 bg-slate-50/30">
+          <MdShield className="text-emerald-600" size={24} />
+          <h2 className="text-lg font-black text-slate-800 tracking-tight tracking-tight">Statutory Compliance Setup</h2>
         </div>
         
-        <div className="p-6 space-y-6">
+        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* PF Section */}
-          <div className="border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-               <h3 className="font-semibold text-gray-700">Provident Fund (PF)</h3>
-               <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
-                 <input 
-                   type="checkbox" 
-                   disabled={!isEditing}
-                   checked={statutory.pf.enabled} 
-                   onChange={(e) => setStatutory(p => ({...p, pf: {...p.pf, enabled: e.target.checked}}))}
-                   className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 disabled:text-gray-400"
-                 />
-                 <span className="text-sm font-medium text-gray-600">Enable PF</span>
+          <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100 group transition-all hover:bg-white hover:shadow-md">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-200 pb-3">
+               <h3 className="font-black text-slate-700 text-xs uppercase tracking-widest">Provident Fund (PF)</h3>
+               <label className="relative inline-flex items-center cursor-pointer">
+                 <input type="checkbox" disabled={!isEditing} checked={statutory.pf.enabled} onChange={(e) => setStatutory(p => ({...p, pf: {...p.pf, enabled: e.target.checked}}))} className="sr-only peer" />
+                 <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 disabled:opacity-50"></div>
                </label>
             </div>
             {statutory.pf.enabled && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                   <label className="text-xs text-gray-500">Employee Contribution (%)</label>
-                   <input 
-                     type="number" 
-                     disabled={!isEditing}
-                     className="w-full border p-2 rounded disabled:bg-gray-100 disabled:text-gray-500" 
-                     value={statutory.pf.employeeContribution} 
-                     onChange={(e) => setStatutory(p => ({...p, pf: {...p.pf, employeeContribution: Number(e.target.value)}}))}
-                   />
-                </div>
-                <div>
-                   <label className="text-xs text-gray-500">Employer Contribution (%)</label>
-                   <input 
-                     type="number" 
-                     disabled={!isEditing}
-                     className="w-full border p-2 rounded disabled:bg-gray-100 disabled:text-gray-500" 
-                     value={statutory.pf.employerContribution} 
-                     onChange={(e) => setStatutory(p => ({...p, pf: {...p.pf, employerContribution: Number(e.target.value)}}))}
-                   />
-                </div>
+              <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2">
+                <div><label className={labelClass}>Emp. Contrib (%)</label><input type="number" disabled={!isEditing} className={inputClass} value={statutory.pf.employeeContribution} onChange={(e) => setStatutory(p => ({...p, pf: {...p.pf, employeeContribution: Number(e.target.value)}}))}/></div>
+                <div><label className={labelClass}>Org. Contrib (%)</label><input type="number" disabled={!isEditing} className={inputClass} value={statutory.pf.employerContribution} onChange={(e) => setStatutory(p => ({...p, pf: {...p.pf, employerContribution: Number(e.target.value)}}))}/></div>
               </div>
             )}
           </div>
 
           {/* ESI Section */}
-          <div className="border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-               <h3 className="font-semibold text-gray-700">Employee State Insurance (ESI)</h3>
-               <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
-                 <input 
-                   type="checkbox" 
-                   disabled={!isEditing}
-                   checked={statutory.esi.enabled} 
-                   onChange={(e) => setStatutory(p => ({...p, esi: {...p.esi, enabled: e.target.checked}}))}
-                   className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 disabled:text-gray-400"
-                 />
-                 <span className="text-sm font-medium text-gray-600">Enable ESI</span>
+          <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100 group transition-all hover:bg-white hover:shadow-md">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-200 pb-3">
+               <h3 className="font-black text-slate-700 text-xs uppercase tracking-widest">State Insurance (ESI)</h3>
+               <label className="relative inline-flex items-center cursor-pointer">
+                 <input type="checkbox" disabled={!isEditing} checked={statutory.esi.enabled} onChange={(e) => setStatutory(p => ({...p, esi: {...p.esi, enabled: e.target.checked}}))} className="sr-only peer" />
+                 <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                </label>
             </div>
             {statutory.esi.enabled && (
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                   <label className="text-xs text-gray-500">Employee Contrib (%)</label>
-                   <input 
-                     type="number" 
-                     disabled={!isEditing}
-                     className="w-full border p-2 rounded disabled:bg-gray-100 disabled:text-gray-500" 
-                     value={statutory.esi.employeeContribution} 
-                     onChange={(e) => setStatutory(p => ({...p, esi: {...p.esi, employeeContribution: Number(e.target.value)}}))}
-                   />
-                </div>
-                <div>
-                   <label className="text-xs text-gray-500">Employer Contrib (%)</label>
-                   <input 
-                     type="number" 
-                     disabled={!isEditing}
-                     className="w-full border p-2 rounded disabled:bg-gray-100 disabled:text-gray-500" 
-                     value={statutory.esi.employerContribution} 
-                     onChange={(e) => setStatutory(p => ({...p, esi: {...p.esi, employerContribution: Number(e.target.value)}}))}
-                   />
-                </div>
-                <div>
-                   <label className="text-xs text-gray-500">Wage Limit (Amount)</label>
-                   <input 
-                     type="number" 
-                     disabled={!isEditing}
-                     className="w-full border p-2 rounded disabled:bg-gray-100 disabled:text-gray-500" 
-                     value={statutory.esi.wageLimit} 
-                     onChange={(e) => setStatutory(p => ({...p, esi: {...p.esi, wageLimit: Number(e.target.value)}}))}
-                   />
-                </div>
+              <div className="grid grid-cols-3 gap-3 animate-in slide-in-from-top-2">
+                <div><label className={labelClass}>Emp (%)</label><input type="number" disabled={!isEditing} className={inputClass} value={statutory.esi.employeeContribution} onChange={(e) => setStatutory(p => ({...p, esi: {...p.esi, employeeContribution: Number(e.target.value)}}))}/></div>
+                <div><label className={labelClass}>Org (%)</label><input type="number" disabled={!isEditing} className={inputClass} value={statutory.esi.employerContribution} onChange={(e) => setStatutory(p => ({...p, esi: {...p.esi, employerContribution: Number(e.target.value)}}))}/></div>
+                <div><label className={labelClass}>Wage Cap</label><input type="number" disabled={!isEditing} className={inputClass} value={statutory.esi.wageLimit} onChange={(e) => setStatutory(p => ({...p, esi: {...p.esi, wageLimit: Number(e.target.value)}}))}/></div>
               </div>
             )}
           </div>
 
-          {/* Professional Tax Section */}
-          <div className="border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-               <h3 className="font-semibold text-gray-700">Professional Tax (PT)</h3>
-               <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
-                 <input 
-                   type="checkbox" 
-                   disabled={!isEditing}
-                   checked={statutory.professionalTax.enabled} 
-                   onChange={(e) => setStatutory(p => ({...p, professionalTax: {...p.professionalTax, enabled: e.target.checked}}))}
-                   className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 disabled:text-gray-400"
-                 />
-                 <span className="text-sm font-medium text-gray-600">Enable PT</span>
+          {/* HRA Section */}
+          <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100 group transition-all hover:bg-white hover:shadow-md">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-200 pb-3">
+               <div className="flex items-center gap-2 text-indigo-600"><MdHome size={20}/><h3 className="font-black text-slate-700 text-xs uppercase tracking-widest">House Rent (HRA)</h3></div>
+               <label className="relative inline-flex items-center cursor-pointer">
+                 <input type="checkbox" disabled={!isEditing} checked={statutory.hra.enabled} onChange={(e) => setStatutory(p => ({...p, hra: {...p.hra, enabled: e.target.checked}}))} className="sr-only peer" />
+                 <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                </label>
             </div>
-             {statutory.professionalTax.enabled && (
-              <div>
-                 <label className="text-xs text-gray-500">State</label>
-                 <select 
-                   disabled={!isEditing}
-                   className="w-full border p-2 rounded bg-white disabled:bg-gray-100 disabled:text-gray-500" 
-                   value={statutory.professionalTax.state}
-                   onChange={(e) => setStatutory(p => ({...p, professionalTax: {...p.professionalTax, state: e.target.value}}))}
-                 >
-                   <option value="">Select State</option>
-                   <option value="Tamil Nadu">Tamil Nadu</option>
-                   <option value="Karnataka">Karnataka</option>
-                   <option value="Maharashtra">Maharashtra</option>
-                 </select>
+            {statutory.hra.enabled && (
+              <div className="flex items-end gap-6 animate-in slide-in-from-top-2">
+                <div className="flex-1"><label className={labelClass}>Percentage of Basic (%)</label><input type="number" disabled={!isEditing} className={inputClass} value={statutory.hra.percentageOfBasic} onChange={(e) => setStatutory(p => ({...p, hra: {...p.hra, percentageOfBasic: Number(e.target.value)}}))}/></div>
+                <label className="flex items-center gap-2 pb-3 cursor-pointer"><input type="checkbox" disabled={!isEditing} checked={statutory.hra.taxExempt} onChange={(e) => setStatutory(p => ({...p, hra: {...p.hra, taxExempt: e.target.checked}}))} className="w-5 h-5 accent-indigo-600 rounded" /><span className="text-xs font-black text-slate-600 uppercase">Exempt</span></label>
               </div>
             )}
           </div>
 
-          {/* NEW HRA Section */}
-          <div className="border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-               <div className="flex items-center gap-2">
-                 <Home size={18} className="text-gray-600"/>
-                 <h3 className="font-semibold text-gray-700">House Rent Allowance (HRA)</h3>
-               </div>
-               <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
-                 <input 
-                   type="checkbox" 
-                   disabled={!isEditing}
-                   checked={statutory.hra.enabled} 
-                   onChange={(e) => setStatutory(p => ({...p, hra: {...p.hra, enabled: e.target.checked}}))}
-                   className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 disabled:text-gray-400"
-                 />
-                 <span className="text-sm font-medium text-gray-600">Enable HRA</span>
+          {/* Professional Tax */}
+          <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100 group transition-all hover:bg-white hover:shadow-md">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-200 pb-3">
+               <h3 className="font-black text-slate-700 text-xs uppercase tracking-widest">Prof. Tax (PT)</h3>
+               <label className="relative inline-flex items-center cursor-pointer">
+                 <input type="checkbox" disabled={!isEditing} checked={statutory.professionalTax.enabled} onChange={(e) => setStatutory(p => ({...p, professionalTax: {...p.professionalTax, enabled: e.target.checked}}))} className="sr-only peer" />
+                 <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                </label>
             </div>
-             {statutory.hra.enabled && (
-              <div className="grid grid-cols-2 gap-4">
-                 <div>
-                    <label className="text-xs text-gray-500">Percentage of Basic (%)</label>
-                    <input 
-                      type="number" 
-                      disabled={!isEditing}
-                      className="w-full border p-2 rounded disabled:bg-gray-100 disabled:text-gray-500" 
-                      value={statutory.hra.percentageOfBasic}
-                      onChange={(e) => setStatutory(p => ({...p, hra: {...p.hra, percentageOfBasic: Number(e.target.value)}}))}
-                    />
-                 </div>
-                 <div className="flex items-end pb-3">
-                    <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
-                        <input 
-                        type="checkbox" 
-                        disabled={!isEditing}
-                        checked={statutory.hra.taxExempt} 
-                        onChange={(e) => setStatutory(p => ({...p, hra: {...p.hra, taxExempt: e.target.checked}}))}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 disabled:text-gray-400"
-                        />
-                        <span className="text-sm text-gray-700">Tax Exempt</span>
-                    </label>
-                 </div>
-              </div>
+            {statutory.professionalTax.enabled && (
+              <div className="animate-in slide-in-from-top-2"><label className={labelClass}>Registered State</label><select disabled={!isEditing} className={inputClass} value={statutory.professionalTax.state} onChange={(e) => setStatutory(p => ({...p, professionalTax: {...p.professionalTax, state: e.target.value}}))}><option value="">Select State</option><option value="Tamil Nadu">Tamil Nadu</option><option value="Karnataka">Karnataka</option><option value="Maharashtra">Maharashtra</option></select></div>
             )}
           </div>
-
         </div>
-        
         {isEditing && (
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
-                <button onClick={saveStatutory} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition">
-                    <Save size={18} /> Save Statutory
-                </button>
-            </div>
+          <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+            <button onClick={saveStatutory} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-2.5 rounded-xl font-black text-sm shadow-lg shadow-emerald-100 active:scale-95 transition-all">
+              <MdSave size={20} /> Update Statutory Settings
+            </button>
+          </div>
         )}
       </div>
 
-      {/* 3. ACCESS LEVELS */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-         <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center gap-2">
-          <Users className="text-purple-600" size={20} />
-          <h2 className="text-lg font-semibold text-gray-800">Access Control</h2>
+      {/* 3. ACCESS CONTROL */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden relative">
+        <div className="absolute right-0 top-0 h-full w-1.5 bg-purple-600" />
+        <div className="p-6 border-b border-slate-100 flex items-center gap-3 bg-slate-50/30">
+          <MdGroup className="text-purple-600" size={24} />
+          <h2 className="text-lg font-black text-slate-800 tracking-tight">System Role Privileges</h2>
         </div>
         
         <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Payroll Admin Card */}
-          <div className="border rounded-lg p-4 bg-gray-50/50">
-            <h3 className="font-bold text-gray-800 mb-3 border-b pb-2">Payroll Admin</h3>
-            <div className="space-y-3">
-              <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
-                <input 
-                  type="checkbox" 
-                  disabled={!isEditing}
-                  checked={accessLevels.payrollAdmin.canProcessPayroll} 
-                  onChange={(e) => setAccessLevels(p => ({...p, payrollAdmin: {...p.payrollAdmin, canProcessPayroll: e.target.checked}}))}
-                  className="rounded text-purple-600 focus:ring-purple-500 disabled:text-gray-400"
-                />
-                <span className="text-sm text-gray-700">Process Payroll</span>
-              </label>
-              <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
-                <input 
-                  type="checkbox" 
-                  disabled={!isEditing}
-                  checked={accessLevels.payrollAdmin.canApprovePayroll} 
-                  onChange={(e) => setAccessLevels(p => ({...p, payrollAdmin: {...p.payrollAdmin, canApprovePayroll: e.target.checked}}))}
-                  className="rounded text-purple-600 focus:ring-purple-500 disabled:text-gray-400"
-                />
-                <span className="text-sm text-gray-700">Approve Payroll</span>
-              </label>
+          {/* Payroll Admin */}
+          <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50/30">
+            <div className="flex items-center gap-2 mb-4 border-b border-slate-200 pb-2"><div className="w-1.5 h-4 bg-purple-500 rounded-full" /><h3 className="font-black text-slate-700 text-[10px] uppercase tracking-widest">Payroll Admin</h3></div>
+            <div className="space-y-4">
+              <AccessCheckbox label="Process Payroll" checked={accessLevels.payrollAdmin.canProcessPayroll} disabled={!isEditing} onChange={(val) => setAccessLevels(p => ({...p, payrollAdmin: {...p.payrollAdmin, canProcessPayroll: val}}))} />
+              <AccessCheckbox label="Approve Payroll" checked={accessLevels.payrollAdmin.canApprovePayroll} disabled={!isEditing} onChange={(val) => setAccessLevels(p => ({...p, payrollAdmin: {...p.payrollAdmin, canApprovePayroll: val}}))} />
             </div>
           </div>
 
-          {/* HR Admin Card */}
-          <div className="border rounded-lg p-4 bg-gray-50/50">
-            <h3 className="font-bold text-gray-800 mb-3 border-b pb-2">HR Admin</h3>
-            <div className="space-y-3">
-              <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
-                <input 
-                  type="checkbox" 
-                  disabled={!isEditing}
-                  checked={accessLevels.hrAdmin.canManageEmployees} 
-                  onChange={(e) => setAccessLevels(p => ({...p, hrAdmin: {...p.hrAdmin, canManageEmployees: e.target.checked}}))}
-                  className="rounded text-purple-600 focus:ring-purple-500 disabled:text-gray-400"
-                />
-                <span className="text-sm text-gray-700">Manage Employees</span>
-              </label>
-              <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
-                <input 
-                  type="checkbox" 
-                  disabled={!isEditing}
-                  checked={accessLevels.hrAdmin.canManageSalaryStructure} 
-                  onChange={(e) => setAccessLevels(p => ({...p, hrAdmin: {...p.hrAdmin, canManageSalaryStructure: e.target.checked}}))}
-                  className="rounded text-purple-600 focus:ring-purple-500 disabled:text-gray-400"
-                />
-                <span className="text-sm text-gray-700">Manage Salaries</span>
-              </label>
+          {/* HR Admin */}
+          <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50/30">
+            <div className="flex items-center gap-2 mb-4 border-b border-slate-200 pb-2"><div className="w-1.5 h-4 bg-indigo-500 rounded-full" /><h3 className="font-black text-slate-700 text-[10px] uppercase tracking-widest">HR Admin</h3></div>
+            <div className="space-y-4">
+              <AccessCheckbox label="Manage Workforce" checked={accessLevels.hrAdmin.canManageEmployees} disabled={!isEditing} onChange={(val) => setAccessLevels(p => ({...p, hrAdmin: {...p.hrAdmin, canManageEmployees: val}}))} />
+              <AccessCheckbox label="Manage Salaries" checked={accessLevels.hrAdmin.canManageSalaryStructure} disabled={!isEditing} onChange={(val) => setAccessLevels(p => ({...p, hrAdmin: {...p.hrAdmin, canManageSalaryStructure: val}}))} />
             </div>
           </div>
 
-           {/* Finance Card */}
-           <div className="border rounded-lg p-4 bg-gray-50/50">
-            <h3 className="font-bold text-gray-800 mb-3 border-b pb-2">Finance Team</h3>
-            <div className="space-y-3">
-              <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
-                <input 
-                  type="checkbox" 
-                  disabled={!isEditing}
-                  checked={accessLevels.finance.canViewReports} 
-                  onChange={(e) => setAccessLevels(p => ({...p, finance: {...p.finance, canViewReports: e.target.checked}}))}
-                  className="rounded text-purple-600 focus:ring-purple-500 disabled:text-gray-400"
-                />
-                <span className="text-sm text-gray-700">View Reports</span>
-              </label>
-              <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
-                <input 
-                  type="checkbox" 
-                  disabled={!isEditing}
-                  checked={accessLevels.finance.canExportData} 
-                  onChange={(e) => setAccessLevels(p => ({...p, finance: {...p.finance, canExportData: e.target.checked}}))}
-                  className="rounded text-purple-600 focus:ring-purple-500 disabled:text-gray-400"
-                />
-                <span className="text-sm text-gray-700">Export Data</span>
-              </label>
+           {/* Finance Team */}
+           <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50/30">
+            <div className="flex items-center gap-2 mb-4 border-b border-slate-200 pb-2"><div className="w-1.5 h-4 bg-blue-500 rounded-full" /><h3 className="font-black text-slate-700 text-[10px] uppercase tracking-widest">Finance Operations</h3></div>
+            <div className="space-y-4">
+              <AccessCheckbox label="Analytics Access" checked={accessLevels.finance.canViewReports} disabled={!isEditing} onChange={(val) => setAccessLevels(p => ({...p, finance: {...p.finance, canViewReports: val}}))} />
+              <AccessCheckbox label="Data Export" checked={accessLevels.finance.canExportData} disabled={!isEditing} onChange={(val) => setAccessLevels(p => ({...p, finance: {...p.finance, canExportData: val}}))} />
             </div>
           </div>
         </div>
 
         {isEditing && (
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
-                <button onClick={saveAccessLevels} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition">
-                    <Save size={18} /> Save Access
-                </button>
-            </div>
+          <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+            <button onClick={saveAccessLevels} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-8 py-2.5 rounded-xl font-black text-sm shadow-lg shadow-purple-100 active:scale-95 transition-all">
+              <MdSave size={20} /> Synchronize Access
+            </button>
+          </div>
         )}
       </div>
     </div>
+  );
+}
+
+// Sub-component for Access Level Checkboxes to keep code clean
+function AccessCheckbox({ label, checked, disabled, onChange }) {
+  return (
+    <label className={`flex items-center gap-3 transition-opacity ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:translate-x-1 transition-transform'}`}>
+      <input type="checkbox" disabled={disabled} checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-5 h-5 accent-indigo-600 rounded cursor-pointer" />
+      <span className="text-sm font-bold text-slate-600">{label}</span>
+    </label>
   );
 }

@@ -1,10 +1,162 @@
+import { useState } from "react";
+import { 
+  MdAssessment, MdPayments, MdSecurity, MdPieChart, 
+  MdFileDownload, MdEventNote, MdHistory, MdTrendingUp 
+} from "react-icons/md";
+// inside Reports.jsx
+import { useNavigate } from "react-router-dom";
+ 
+
 export default function Reports() {
+  const [activeCategory, setActiveCategory] = useState("All");
+
+  const navigate = useNavigate();
+
+  const categories = ["All", "Payroll", "Statutory", "Organization"];
+
+  const reportCards = [
+    {
+      title: "Monthly Salary Register",
+      desc: "Gross to Net breakdown for all active employees.",
+      icon: <MdPayments />,
+      category: "Payroll",
+      gradient: "from-indigo-500 to-purple-600",
+    },
+    {
+      title: "Statutory PF & ESI",
+      desc: "Combined report of employer and employee contributions.",
+      icon: <MdSecurity />,
+      category: "Statutory",
+      gradient: "from-emerald-400 to-teal-600",
+    },
+    {
+      title: "Departmental Cost Analysis",
+      desc: "Headcount and total CTC distribution by department.",
+      icon: <MdPieChart />,
+      category: "Organization",
+      gradient: "from-blue-500 to-cyan-500",
+    },
+    {
+      title: "Professional Tax (PT) Summary",
+      desc: "State-wise PT deductions for the current period.",
+      icon: <MdAssessment />,
+      category: "Statutory",
+      gradient: "from-orange-400 to-rose-500",
+    },
+    {
+      title: "Bank Disbursement Advice",
+      desc: "Net pay list with account numbers and IFSC codes.",
+      icon: <MdTrendingUp />,
+      category: "Payroll",
+      gradient: "from-violet-500 to-fuchsia-600",
+    },
+    {
+      title: "Audit Logs & Activity",
+      desc: "System changes, role updates, and login history.",
+      icon: <MdHistory />,
+      category: "Organization",
+      gradient: "from-slate-500 to-slate-700",
+    }
+  ];
+
+  const filteredReports = activeCategory === "All" 
+    ? reportCards 
+    : reportCards.filter(r => r.category === activeCategory);
+
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm">
-      <h2 className="text-lg font-semibold mb-2">Reports</h2>
-      <p className="text-gray-500">
-        View system activity and generate reports.
-      </p>
+    <div className="space-y-8 animate-in fade-in duration-500">
+      
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-slate-800 tracking-tight">Intelligence & Reports</h1>
+          <p className="text-sm font-medium text-slate-500 italic">Generate compliance-ready documents and analytics.</p>
+        </div>
+        
+        {/* Category Pills */}
+        <div className="flex p-1 bg-slate-200/50 rounded-2xl w-full md:w-auto overflow-x-auto">
+          {categories.map(cat => (
+            <button 
+              key={cat} 
+              onClick={() => setActiveCategory(cat)}
+              className={`px-6 py-2 text-xs font-black rounded-xl transition-all whitespace-nowrap ${
+                activeCategory === cat ? "bg-white text-indigo-600 shadow-md" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              {cat.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* REPORTS GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredReports.map((report, idx) => (
+          <ReportActionCard key={idx} {...report} />
+        ))}
+      </div>
+
+      {/* RECENT ACTIVITY SECTION (Matching Glass-Slab Style) */}
+      <div className="relative overflow-hidden rounded-3xl p-0.5 bg-gradient-to-br from-slate-200 to-slate-300 shadow-lg">
+        <div className="bg-white/95 backdrop-blur-md rounded-[22px] p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+               <MdEventNote className="text-slate-500" size={24} />
+               <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Recent Generations</h3>
+            </div>
+            <button className="text-[10px] font-black text-indigo-600 hover:underline tracking-tighter">CLEAR HISTORY</button>
+          </div>
+          
+          <div className="space-y-4">
+             {[1, 2].map((_, i) => (
+               <div key={i} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
+                      <MdFileDownload size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-700">Salary_Register_Jan_2026.xlsx</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Generated by Syed Rizwan • 2 mins ago</p>
+                    </div>
+                  </div>
+                  <button className="px-4 py-1.5 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-lg hover:bg-indigo-100 transition-colors">DOWNLOAD</button>
+               </div>
+             ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Sub-component for individual Report Cards
+function ReportActionCard({ title, desc, icon, category, gradient }) {
+  return (
+    <div className={`group relative overflow-hidden rounded-2xl p-0.5 bg-gradient-to-br ${gradient} shadow-md transition-all hover:scale-[1.02] cursor-pointer`}>
+      <div className="bg-white/95 backdrop-blur-md rounded-[14px] p-6 h-full flex flex-col relative">
+        <div className={`absolute right-0 top-1/4 bottom-1/4 w-1.5 rounded-l-full bg-gradient-to-b ${gradient}`} />
+        
+        <div className="flex justify-between items-start mb-4">
+          <div className={`p-3 rounded-xl bg-gradient-to-br ${gradient} text-white shadow-lg`}>
+            {icon}
+          </div>
+          <span className="text-[9px] font-black px-2 py-1 bg-slate-100 text-slate-500 rounded-md uppercase tracking-tighter">
+            {category}
+          </span>
+        </div>
+
+        <h3 className="text-base font-black text-slate-800 tracking-tight mb-2 group-hover:text-indigo-600 transition-colors">
+          {title}
+        </h3>
+        <p className="text-xs text-slate-500 font-medium leading-relaxed flex-1">
+          {desc}
+        </p>
+
+        <div className="mt-6 flex items-center gap-2 text-indigo-600">
+           <span className="text-[10px] font-black uppercase tracking-widest">Generate Report</span>
+           <MdFileDownload size={18} />
+        </div>
+      </div>
     </div>
   );
 }

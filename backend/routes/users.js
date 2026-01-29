@@ -4,14 +4,15 @@ import User from '../models/Usermodel.js';
 
 
 const router = express.Router();
-
+const superadmin="Super Admin"
+const hradmin="HR Admin"
 /**
  * GET ALL USERS (Super Admin + HR Admin)
  */
 router.get(
   '/',
   authenticate,
-  authorize('Super Admin', 'HR Admin'),
+  authorize(superadmin, hradmin),
   async (req, res) => {
     try {
       const users = await User.find({
@@ -39,7 +40,7 @@ router.get(
 /**
  * ADD USER (Super Admin only)
  */ 
-router.get("/check-existence", authenticate, authorize("Super Admin", "HR Admin"), async (req, res) => {
+router.get("/check-existence", authenticate, authorize(superadmin, hradmin), async (req, res) => {
   const { email, employeeId } = req.query;
 
   const exists = await User.findOne({
@@ -54,7 +55,7 @@ router.get("/check-existence", authenticate, authorize("Super Admin", "HR Admin"
 router.post(
   '/',
   authenticate,
-  authorize('Super Admin'),
+  authorize(superadmin, hradmin),
   async (req, res) => {
     try {
       const { basic } = req.body;
@@ -118,7 +119,7 @@ router.post(
 router.put(
   '/:userId',
   authenticate,
-  authorize('Super Admin'),
+  authorize(superadmin, hradmin),
   async (req, res) => {
     try {
       const { userId } = req.params;
@@ -165,7 +166,7 @@ router.put(
 router.patch(
   "/:id/status",
   authenticate,
-  authorize("Super Admin", "HR Admin"),
+  authorize(superadmin, hradmin),
   async (req, res) => {
     try {
       const { status } = req.body;
@@ -198,7 +199,7 @@ router.patch(
 router.delete(
   '/:userId',
   authenticate,
-  authorize('Super Admin'),
+  authorize(superadmin, hradmin),
   async (req, res) => {
     try {
       const { userId } = req.params;

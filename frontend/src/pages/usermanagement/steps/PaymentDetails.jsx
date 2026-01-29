@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useEmployeeForm } from "../context/EmployeeFormContext";
 import { createEmployee } from "../services/employee.service";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { MdAccountBalance, MdPayments, MdArrowBack, MdCheckCircle } from "react-icons/md";
 
-const PaymentDetails = ({ onBack, onSuccess }) => {
+const PaymentDetails = ({ onBack }) => {
   const { employee, update } = useEmployeeForm();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -16,20 +17,19 @@ const PaymentDetails = ({ onBack, onSuccess }) => {
     setError("");
 
     if (!payment.mode) {
-      return setError("Please select a payment mode");
+      return setError("Please select a payment mode to proceed.");
     }
 
     if (payment.mode === "BANK") {
       const { bankName, accountNumber, ifsc } = payment;
       if (!bankName || !accountNumber || !ifsc) {
-        return setError("Please fill all bank details");
+        return setError("Please fill all mandatory bank details");
       }
     }
 
     try {
       setLoading(true);
 
-      // ✅ TRANSFORM payment here
       const payload = {
         ...employee,
         payment: {
@@ -53,96 +53,122 @@ const PaymentDetails = ({ onBack, onSuccess }) => {
       params.delete("id");
       navigate(`${location.pathname}?${params.toString()}`);
     } catch (err) {
-      setError(err.message || "Failed to create employee");
+      setError(err.message || "Failed to onboard employee. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-
+  const labelClass = "text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1";
+  const inputClass = "w-full px-4 py-2.5 rounded-xl text-sm font-medium transition-all outline-none border border-slate-200 bg-white text-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10";
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <h2 className="text-lg font-semibold">Payment Details</h2>
+    <div className="space-y-8 animate-in fade-in duration-500">
+      
+      {/* 1. PAYMENT MODE SELECTION */}
+      <section>
+        <h3 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2">
+          <span className="w-1 h-4 bg-indigo-600 rounded-full"></span>
+          Disbursement Method
+        </h3>
+        <div className="max-w-md flex flex-col">
+          <label className={labelClass}>Payment Mode *</label>
+          <div className="relative">
+            <MdPayments className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <select
+              className={`${inputClass} pl-11 appearance-none`}
+              value={payment.mode || ""}
+              onChange={(e) => update("payment", {...payment, mode: e.target.value })}
+            >
+              <option value="">Select payment mode</option>
+              <option value="BANK">Bank Transfer (NEFT/RTGS)</option>
+              <option value="CASH">Cash Distribution</option>
+              <option value="CHEQUE">Business Cheque</option>
+            </select>
+          </div>
+        </div>
+      </section>
 
-      {/* PAYMENT MODE */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">Payment Mode *</label>
-        <select
-          className="border rounded p-2 w-full"
-          value={payment.mode || ""}
-          onChange={(e) => update("payment", {...payment,  mode: e.target.value })}
-        >
-          <option value="">Select payment mode</option>
-          <option value="BANK">Bank Transfer</option>
-          <option value="CASH">Cash</option>
-          <option value="CHEQUE">Cheque</option>
-        </select>
-      </div>
-
-      {/* BANK DETAILS */}
+      {/* 2. BANK DETAILS SECTION (Glass-Slab Style) */}
       {payment.mode === "BANK" && (
-        <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded border">
-          <div>
-            <label className="text-sm">Bank Name *</label>
-            <input
-              className="border p-2 rounded w-full"
-              onChange={(e) =>
-                update("payment", {...payment,  bankName: e.target.value })
-              }
-            />
-          </div>
+        <section className="relative overflow-hidden rounded-2xl p-0.5 bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg animate-in slide-in-from-top-4 duration-300">
+          <div className="bg-white/95 backdrop-blur-md rounded-[14px] p-6 relative">
+            <div className="absolute right-0 top-1/4 bottom-1/4 w-1.5 rounded-l-full bg-indigo-600" />
+            
+            <div className="flex items-center gap-2 mb-6">
+              <MdAccountBalance className="text-indigo-600" size={22} />
+              <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight">Bank Account Information</h4>
+            </div>
 
-          <div>
-            <label className="text-sm">Account Number *</label>
-            <input
-              className="border p-2 rounded w-full"
-              onChange={(e) =>
-                update("payment", {...payment,  accountNumber: e.target.value })
-              }
-            />
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex flex-col">
+                <label className={labelClass}>Bank Name *</label>
+                <input
+                  className={inputClass}
+                  placeholder="e.g. HDFC Bank"
+                  value={payment.bankName || ""}
+                  onChange={(e) => update("payment", {...payment, bankName: e.target.value })}
+                />
+              </div>
 
-          <div>
-            <label className="text-sm">IFSC Code *</label>
-            <input
-              className="border p-2 rounded w-full"
-              onChange={(e) =>
-                update("payment", {...payment,  ifsc: e.target.value })
-              }
-            />
-          </div>
+              <div className="flex flex-col">
+                <label className={labelClass}>Account Number *</label>
+                <input
+                  className={inputClass}
+                  placeholder="000000000000"
+                  value={payment.accountNumber || ""}
+                  onChange={(e) => update("payment", {...payment, accountNumber: e.target.value })}
+                />
+              </div>
 
-          <div>
-            <label className="text-sm">Account Holder Name</label>
-            <input
-              className="border p-2 rounded w-full"
-              onChange={(e) =>
-                update("payment", {...payment,  accountHolder: e.target.value })
-              }
-            />
+              <div className="flex flex-col">
+                <label className={labelClass}>IFSC Code *</label>
+                <input
+                  className={`${inputClass} uppercase`}
+                  placeholder="HDFC0001234"
+                  value={payment.ifsc || ""}
+                  onChange={(e) => update("payment", {...payment, ifsc: e.target.value.toUpperCase() })}
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className={labelClass}>Account Holder Name</label>
+                <input
+                  className={inputClass}
+                  placeholder="As per bank records"
+                  value={payment.accountHolder || ""}
+                  onChange={(e) => update("payment", {...payment, accountHolder: e.target.value })}
+                />
+              </div>
+            </div>
           </div>
+        </section>
+      )}
+
+      {/* ERROR MESSAGE */}
+      {error && (
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 text-xs font-bold animate-shake">
+          {error}
         </div>
       )}
 
-      {/* ERROR */}
-      {error && <p className="text-red-600 text-sm">{error}</p>}
-
-      {/* ACTION BUTTONS */}
-      <div className="flex justify-between pt-4">
-        <button
-          onClick={onBack}
-          className="border px-6 py-2 rounded"
+      {/* FOOTER NAVIGATION */}
+      <div className="flex items-center justify-between pt-6 border-t border-slate-100">
+        <button 
+          type="button" 
+          onClick={onBack} 
+          className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black text-slate-500 hover:bg-slate-100 transition-all active:scale-95"
         >
-          Back
+          <MdArrowBack /> Prev
         </button>
-
-        <button
+        
+        <button 
           onClick={handleFinish}
           disabled={loading}
-          className="bg-blue-600 text-white px-6 py-2 rounded disabled:opacity-50"
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white px-10 py-3 rounded-xl font-black text-sm transition-all shadow-lg shadow-indigo-200 active:scale-95 disabled:shadow-none"
         >
-          {loading ? "Saving..." : "Finish"}
+          {loading ? "Onboarding..." : "Complete Onboarding"} 
+          {!loading && <MdCheckCircle className="ml-1" size={18} />}
         </button>
       </div>
     </div>

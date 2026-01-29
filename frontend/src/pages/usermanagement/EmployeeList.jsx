@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { X, Eye, Trash2 } from "lucide-react"; // Assuming you have lucide-react, standard in modern stacks
+import { X, Eye, Trash2, Search, Filter, ToggleLeft,ToggleRight} from "lucide-react";
 
 const ITEMS_PER_PAGE = 5;
 
-// Professional Tax Slabs
+// Professional Tax Slabs (Logic untouched)
 const P_TAX_SLABS = {
   "Tamil Nadu": [
     { limit: 12500, amount: 208 },
@@ -32,6 +32,7 @@ const EmployeeList = () => {
   const [orgConfig, setOrgConfig] = useState(null); 
   const [filteredEmployees, setFilteredEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   
   // Modal State
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -49,14 +50,12 @@ const EmployeeList = () => {
       if (!token) throw new Error("User not logged in");
       const headers = { Authorization: `Bearer ${token}` };
 
-      // 1. Fetch Organization Settings
       const orgRes = await fetch("http://localhost:5000/api/organization/settings", { headers });
       if (orgRes.ok) {
         const orgData = await orgRes.json();
         setOrgConfig(orgData);
       }
 
-      // 2. Fetch Employees
       const empRes = await fetch("http://localhost:5000/api/users", { headers });
       if (empRes.ok) {
         const result = await empRes.json();
@@ -71,48 +70,33 @@ const EmployeeList = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  /* ===================== CALCULATION LOGIC ===================== */
+  /* ===================== CALCULATION LOGIC (STRICTLY UNCHANGED) ===================== */
   const calculateSalaryDetails = (employee) => {
-    // 1. Inputs
     const ctc = employee.employeeDetails?.salary?.ctc || 0;
-    console.log(ctc);
-    
     const basicPercent = employee.employeeDetails?.salary?.basicPercentage || 50;
-    
-    // 2. Earnings Calculation
     const monthlyGross = ctc / 12;
     const basicSalary = monthlyGross * (basicPercent / 100);
     
     let hra = 0;
     let specialAllowance = 0;
 
-    // HRA Logic from DB Config
     if (orgConfig?.statutoryConfig?.hra?.enabled) {
       const hraPercent = orgConfig.statutoryConfig.hra.percentageOfBasic || 50;
       hra = basicSalary * (hraPercent / 100);
     }
 
-    // Special Allowance is the balancing figure to match Gross
     specialAllowance = monthlyGross - basicSalary - hra;
-    if (specialAllowance < 0) specialAllowance = 0; // Safety check
+    if (specialAllowance < 0) specialAllowance = 0;
 
-    // 3. Deductions Calculation
-    let pf = 0;
-    let esi = 0;
-    let pt = 0;
-    let employerPF = 0;
-    let employerESI = 0;
+    let pf = 0; let esi = 0; let pt = 0;
+    let employerPF = 0; let employerESI = 0;
 
     if (orgConfig?.statutoryConfig) {
       const { pf: pfConfig, esi: esiConfig, professionalTax: ptConfig } = orgConfig.statutoryConfig;
-
-      // PF
       if (pfConfig?.enabled) {
         pf = basicSalary * ((pfConfig.employeeContribution || 12) / 100);
         employerPF = basicSalary * ((pfConfig.employerContribution || 12) / 100);
       }
-
-      // ESI (Eligible if Gross <= Limit)
       if (esiConfig?.enabled) {
         const wageLimit = esiConfig.wageLimit || 21000;
         if (monthlyGross <= wageLimit) {
@@ -120,8 +104,6 @@ const EmployeeList = () => {
           employerESI = monthlyGross * ((esiConfig.employerContribution || 3.25) / 100);
         }
       }
-
-      // Professional Tax
       if (ptConfig?.enabled) {
         const stateName = ptConfig.state || "Default";
         const slabs = P_TAX_SLABS[stateName] || P_TAX_SLABS["Default"];
@@ -131,29 +113,14 @@ const EmployeeList = () => {
     }
 
     return {
-      ctc,
-      monthlyGross,
-      earnings: {
-        basic: basicSalary,
-        hra: hra,
-        special: specialAllowance,
-        total: monthlyGross
-      },
-      deductions: {
-        pf: pf,
-        esi: esi,
-        pt: pt,
-        total: pf + esi + pt
-      },
-      employerContributions: {
-        pf: employerPF,
-        esi: employerESI
-      },
+      ctc, monthlyGross,
+      earnings: { basic: basicSalary, hra: hra, special: specialAllowance, total: monthlyGross },
+      deductions: { pf, esi, pt, total: pf + esi + pt },
+      employerContributions: { pf: employerPF, esi: employerESI },
       netPay: monthlyGross - (pf + esi + pt)
     };
   };
 
-  /* ===================== VIEW HANDLER ===================== */
   const handleViewSalary = (employee) => {
     const details = calculateSalaryDetails(employee);
     setSalaryBreakdown(details);
@@ -168,15 +135,19 @@ const EmployeeList = () => {
   /* ===================== FILTER LOGIC ===================== */
   useEffect(() => {
     setCurrentPage(1);
-    const dataToFilter = employees || [];
-    if (activeTab === "All") {
-      setFilteredEmployees(dataToFilter);
-    } else {
-      setFilteredEmployees(dataToFilter.filter((e) => e.status === activeTab));
+    let filtered = employees || [];
+    if (activeTab !== "All") {
+      filtered = filtered.filter((e) => e.status === activeTab);
     }
-  }, [activeTab, employees]);
+    if (searchTerm) {
+      filtered = filtered.filter((e) => 
+        e.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        e.employeeDetails?.basic?.employeeId?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    setFilteredEmployees(filtered);
+  }, [activeTab, employees, searchTerm]);
 
-  // Actions
   const toggleStatus = async (id, currentStatus) => {
     const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
     setEmployees(prev => prev.map(emp => emp._id === id ? { ...emp, status: newStatus } : emp));
@@ -187,7 +158,7 @@ const EmployeeList = () => {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus })
       });
-    } catch (e) { console.error(e); fetchData(); }
+    } catch (e) { fetchData(); }
   };
 
   const deleteEmployee = async (id) => {
@@ -204,276 +175,274 @@ const EmployeeList = () => {
   const totalPages = Math.ceil(totalEmployees / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedEmployees = filteredEmployees.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  
   const getPaginationGroup = () => {
-  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
-  if (currentPage <= 4) return [1, 2, 3, 4, 5, "...", totalPages];
-  if (currentPage >= totalPages - 3)
-    return [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-  return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
-};
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (currentPage <= 4) return [1, 2, 3, 4, 5, "...", totalPages];
+    if (currentPage >= totalPages - 3) return [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
+  };
 
-  const paginationGroup = getPaginationGroup();
- // Using simplified or full logic from your original code
-
-  if (loading) return <div className="p-8 text-gray-500">Loading payroll data...</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center h-screen bg-slate-50">
+       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+    </div>
+  );
 
   return (
-    <div className="p-6 bg-gray-50 h-full overflow-hidden flex flex-col relative">
-      <h2 className="text-2xl font-bold mb-1">Employee Directory</h2>
-      <p className="text-gray-500 mb-6">Manage staff and view calculated salary breakdown.</p>
-
-      {/* Tabs */}
-      <div className="flex gap-6 bg-white p-3 border rounded-lg mb-6 shadow-sm">
-        {["All", "Active", "Inactive"].map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)} 
-            className={`text-sm font-medium pb-2 ${activeTab === tab ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500"}`}>
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      {/* Table */}
-      <div className="bg-white border rounded-lg shadow-sm flex flex-col flex-1 overflow-hidden">
-        <div className="overflow-auto flex-1">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-gray-50 text-gray-500 uppercase font-semibold border-b">
-              <tr>
-                <th className="px-4 py-3 min-w-[180px]">Employee</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3 text-right bg-blue-50/50">Monthly Gross</th>
-                <th className="px-4 py-3 text-right font-bold text-gray-700 bg-gray-100">Net Pay</th>
-                <th className="px-4 py-3 text-center">Status</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {paginatedEmployees.map((emp) => {
-                const { monthlyGross, netPay } = calculateSalaryDetails(emp);
-                return (
-                  <tr key={emp._id} 
-                      className="hover:bg-gray-50 transition-colors cursor-pointer"
-                      onClick={() => handleViewSalary(emp)} // Row Click triggers modal
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600 text-xs">
-                          {emp.name?.[0]}
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900">{emp.name}</div>
-                          <div className="text-[10px] text-gray-400">{emp.employeeDetails?.basic?.employeeId}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {emp.role}<br/>
-                      <span className="text-[10px] text-gray-400">{emp.employeeDetails?.basic?.department}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-900 bg-blue-50/20">
-                      {formatCurrency(monthlyGross)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-bold text-gray-800 bg-gray-50">
-                      {formatCurrency(netPay)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button onClick={(e) => { e.stopPropagation(); toggleStatus(emp._id, emp.status); }} 
-                        className={`px-2 py-0.5 rounded text-[10px] border ${emp.status === "Active" ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
-                        {emp.status}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 text-right flex justify-end gap-2">
-                      <button onClick={(e) => { e.stopPropagation(); handleViewSalary(emp); }} className="text-gray-400 hover:text-blue-600">
-                         <Eye size={16} />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); deleteEmployee(emp._id); }} className="text-gray-400 hover:text-red-600">
-                         <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+    <div className="p-4 md:p-8 bg-slate-50 flex flex-col gap-6">
+      
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Employee Directory</h2>
+          <p className="text-sm text-slate-500 font-medium">Manage workforce and statutory payroll components.</p>
         </div>
-        {/* Pagination Footer */}
-        {totalEmployees > 0 && (
-          <div className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t">
-            
-            {/* Left: Showing count */}
-            <p className="text-sm text-gray-500">
-              Showing{" "}
-              <span className="font-medium">{startIndex + 1}</span> to{" "}
-              <span className="font-medium">
-                {Math.min(startIndex + ITEMS_PER_PAGE, totalEmployees)}
-              </span>{" "}
-              of{" "}
-              <span className="font-medium">{totalEmployees}</span>{" "}
-              results
-            </p>
-
-            {/* Right: Pagination buttons */}
-            <div className="flex items-center gap-1">
-              {/* Prev */}
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-2 py-1 border rounded bg-white hover:bg-gray-100 disabled:opacity-50"
-              >
-                ‹
-              </button>
-
-              {/* Page numbers */}
-              {paginationGroup.map((item, i) => (
-                <button
-                  key={i}
-                  disabled={item === "..."}
-                  onClick={() => typeof item === "number" && setCurrentPage(item)}
-                  className={`min-w-[32px] h-8 rounded border text-sm font-medium
-                    ${
-                      currentPage === item
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white text-gray-600 hover:bg-gray-50 border-gray-300"
-                    }
-                    ${
-                      item === "..."
-                        ? "border-none bg-transparent cursor-default"
-                        : ""
-                    }
-                  `}
-                >
-                  {item}
-                </button>
-              ))}
-
-              {/* Next */}
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="px-2 py-1 border rounded bg-white hover:bg-gray-100 disabled:opacity-50"
-              >
-                ›
-              </button>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input 
+              type="text" 
+              placeholder="Search ID or Name..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
+            />
           </div>
-        )}
-
-
+        </div>
       </div>
 
-      {/* ===================== SALARY BREAKDOWN MODAL ===================== */}
+      {/* Tabs & Filters */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex p-1 bg-slate-200/50 rounded-xl w-fit">
+          {["All", "Active", "Inactive"].map(tab => (
+            <button 
+              key={tab} 
+              onClick={() => setActiveTab(tab)} 
+              className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === tab ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-slate-50/50 border-b border-slate-200 text-[10px] uppercase tracking-widest font-black text-slate-500">
+              <th className="px-6 py-4">Employee Details</th>
+              <th className="px-6 py-4">Role & Dept</th>
+              <th className="px-6 py-4 text-right">Gross Salary</th>
+              <th className="px-6 py-4 text-right">Estimated Net</th>
+              <th className="px-6 py-4 text-center">Status</th>
+              <th className="px-6 py-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 text-sm">
+            {paginatedEmployees.map((emp) => {
+              const { monthlyGross, netPay } = calculateSalaryDetails(emp);
+              return (
+                <tr key={emp._id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-sm">
+                        {emp.name?.[0]}
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-800">{emp.name}</div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{emp.employeeDetails?.basic?.employeeId}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-slate-600">
+                    <div className="font-semibold">{emp.role}</div>
+                    <div className="text-xs text-slate-400">{emp.employeeDetails?.basic?.department}</div>
+                  </td>
+                  <td className="px-6 py-4 text-right font-bold text-slate-700">{formatCurrency(monthlyGross)}</td>
+                  <td className="px-6 py-4 text-right font-black text-indigo-600">{formatCurrency(netPay)}</td>
+                  <td className="px-6 py-4 text-center">
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${emp.status === "Active" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                      {emp.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => handleViewSalary(emp)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"><Eye size={18} /></button>
+                      <button onClick={() => toggleStatus(emp._id, emp.status)} title={emp.status === "Active" ? "Deactivate Employee" : "Activate Employee"} className="p-2 rounded-lg transition-all hover:bg-slate-100">
+                        {emp.status === "Active" ? (
+                          <ToggleRight size={20} className="text-emerald-600" />
+                        ) : (
+                          <ToggleLeft size={20} className="text-slate-400" />
+                        )}
+                      </button>
+                      <button onClick={() => deleteEmployee(emp._id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"><Trash2 size={18} /></button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="lg:hidden flex flex-col gap-4">
+        {paginatedEmployees.map((emp) => {
+          const { monthlyGross, netPay } = calculateSalaryDetails(emp);
+          return (
+            <div key={emp._id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4 relative overflow-hidden">
+               <div className="absolute right-0 top-0 h-full w-1.5 bg-indigo-500" />
+               <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                    {emp.name?.[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-slate-800 truncate">{emp.name}</h3>
+                    <p className="text-xs text-slate-500">{emp.role} • {emp.employeeDetails?.basic?.department}</p>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter ${emp.status === "Active" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                    {emp.status}
+                  </span>
+               </div>
+               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gross</p>
+                    <p className="text-sm font-bold text-slate-700">{formatCurrency(monthlyGross)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Net Pay</p>
+                    <p className="text-sm font-black text-indigo-600">{formatCurrency(netPay)}</p>
+                  </div>
+               </div>
+               <div className="flex gap-2 mt-2">
+                  <button onClick={() => handleViewSalary(emp)} className="flex-1 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold flex items-center justify-center gap-2"><Eye size={16}/> View Breakdown</button>
+                  <button onClick={() => deleteEmployee(emp._id)} className="p-2 text-rose-500 bg-rose-50 rounded-xl"><Trash2 size={18}/></button>
+                  <button onClick={() => toggleStatus(emp._id, emp.status)} title={emp.status === "Active" ? "Deactivate Employee" : "Activate Employee"}  className="p-2 text-rose-500 bg-rose-50 rounded-xl">
+                    {emp.status === "Active" ? 
+                        ( <ToggleRight size={20} className="text-emerald-600" /> ) : 
+                        ( <ToggleLeft size={20} className="text-slate-400" /> )
+                    }
+                  </button>
+               </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Pagination Footer */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-4 border-t border-slate-200 mt-auto">
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          Showing {startIndex + 1} to {Math.min(startIndex + ITEMS_PER_PAGE, totalEmployees)} of {totalEmployees} Results
+        </p>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 disabled:opacity-30">‹</button>
+          {getPaginationGroup().map((item, i) => (
+            <button 
+              key={i} 
+              onClick={() => typeof item === "number" && setCurrentPage(item)}
+              className={`w-9 h-9 rounded-xl border text-xs font-black transition-all ${currentPage === item ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"}`}
+            >
+              {item}
+            </button>
+          ))}
+          <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 disabled:opacity-30">›</button>
+        </div>
+      </div>
+
+      {/* ===================== SALARY BREAKDOWN MODAL (MOBILE FRIENDLY) ===================== */}
       {selectedEmployee && salaryBreakdown && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in duration-300">
             
-            {/* Header */}
-            <div className="flex justify-between items-start p-6 border-b bg-gray-50/50">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-lg">
+            {/* Modal Header */}
+            <div className="relative p-6 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50">
+               <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 text-white flex items-center justify-center font-black text-xl shadow-lg">
                   {selectedEmployee.name?.[0]}
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">{selectedEmployee.name}</h3>
-                  <p className="text-sm text-gray-500">
-                    {selectedEmployee.employeeDetails?.basic?.designation || selectedEmployee.role} • {selectedEmployee.employeeDetails?.basic?.department}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    PAN: {selectedEmployee.employeeDetails?.personal?.pan || "N/A"}
-                  </p>
-                </div>
-              </div>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition">
-                <X size={20} />
-              </button>
+               </div>
+               <div className="flex-1">
+                  <h3 className="text-xl font-black text-slate-900 leading-tight">{selectedEmployee.name}</h3>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{selectedEmployee.role} • {selectedEmployee.employeeDetails?.basic?.department}</p>
+               </div>
+               <button onClick={closeModal} className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-sm hover:text-rose-500 transition-colors border border-slate-100"><X size={20} /></button>
             </div>
 
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                 <h4 className="font-semibold text-gray-800">Salary Breakdown</h4>
-              </div>
-
-              {/* Grid: Earnings vs Deductions */}
+            <div className="p-6 overflow-y-auto max-h-[70vh] custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                
-                {/* Earnings Column */}
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                    <span className="text-sm font-semibold text-green-700">Earnings</span>
+                {/* Earnings */}
+                <div className="bg-emerald-50/30 p-4 rounded-2xl border border-emerald-100/50">
+                  <div className="flex items-center gap-2 mb-4 border-b border-emerald-100 pb-2">
+                    <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
+                    <span className="text-xs font-black text-emerald-700 uppercase tracking-widest">Earnings</span>
                   </div>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between text-gray-600">
-                      <span>Basic Salary</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(salaryBreakdown.earnings.basic)}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-600">
-                      <span>HRA</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(salaryBreakdown.earnings.hra)}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-600">
-                      <span>Special Allowance</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(salaryBreakdown.earnings.special)}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-600">
-                      <span>Other Earnings</span>
-                      <span className="font-medium text-gray-900">₹0</span>
-                    </div>
-                    <div className="border-t pt-2 flex justify-between font-semibold text-gray-800 mt-2">
-                      <span>Total Earnings</span>
-                      <span className="text-green-700">{formatCurrency(salaryBreakdown.earnings.total)}</span>
+                  <div className="space-y-3">
+                    {[
+                      { l: "Basic Salary", v: salaryBreakdown.earnings.basic },
+                      { l: "HRA", v: salaryBreakdown.earnings.hra },
+                      { l: "Special Allowance", v: salaryBreakdown.earnings.special }
+                    ].map((item, i) => (
+                      <div key={i} className="flex justify-between text-xs font-bold">
+                        <span className="text-slate-500">{item.l}</span>
+                        <span className="text-slate-800">{formatCurrency(item.v)}</span>
+                      </div>
+                    ))}
+                    <div className="pt-2 border-t border-emerald-100 flex justify-between font-black text-sm text-emerald-700">
+                      <span>Gross Total</span>
+                      <span>{formatCurrency(salaryBreakdown.earnings.total)}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Deductions Column */}
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="h-2 w-2 rounded-full bg-red-500"></div>
-                    <span className="text-sm font-semibold text-red-700">Deductions</span>
+                {/* Deductions */}
+                <div className="bg-rose-50/30 p-4 rounded-2xl border border-rose-100/50">
+                  <div className="flex items-center gap-2 mb-4 border-b border-rose-100 pb-2">
+                    <div className="h-2 w-2 rounded-full bg-rose-500"></div>
+                    <span className="text-xs font-black text-rose-700 uppercase tracking-widest">Deductions</span>
                   </div>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between text-gray-600">
-                      <span>PF (Employee)</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(salaryBreakdown.deductions.pf)}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-600">
-                      <span>ESI (Employee)</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(salaryBreakdown.deductions.esi)}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-600">
-                      <span>Professional Tax</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(salaryBreakdown.deductions.pt)}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-600">
-                      <span>Income Tax (TDS)</span>
-                      <span className="font-medium text-gray-900">₹0</span> {/* Placeholder as TDS logic isn't in Prompt */}
-                    </div>
-                    <div className="border-t pt-2 flex justify-between font-semibold text-gray-800 mt-2">
+                  <div className="space-y-3">
+                    {[
+                      { l: "PF (Employee)", v: salaryBreakdown.deductions.pf },
+                      { l: "ESI (Employee)", v: salaryBreakdown.deductions.esi },
+                      { l: "Professional Tax", v: salaryBreakdown.deductions.pt }
+                    ].map((item, i) => (
+                      <div key={i} className="flex justify-between text-xs font-bold">
+                        <span className="text-slate-500">{item.l}</span>
+                        <span className="text-slate-800">{formatCurrency(item.v)}</span>
+                      </div>
+                    ))}
+                    <div className="pt-2 border-t border-rose-100 flex justify-between font-black text-sm text-rose-700">
                       <span>Total Deductions</span>
-                      <span className="text-red-600">{formatCurrency(salaryBreakdown.deductions.total)}</span>
+                      <span>{formatCurrency(salaryBreakdown.deductions.total)}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Net Pay Box */}
-              <div className="mt-8 bg-blue-50/50 rounded-lg p-4 border border-blue-100 flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-blue-600 font-medium">Net Pay (Monthly)</p>
-                  <p className="text-2xl font-bold text-blue-900 mt-1">{formatCurrency(salaryBreakdown.netPay)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">Annual CTC</p>
-                  <p className="text-lg font-semibold text-gray-800">{formatCurrency(salaryBreakdown.ctc)}</p>
+              {/* Net Pay Highlight - Matching your Dash Cards */}
+              <div className="mt-8 relative overflow-hidden rounded-2xl p-0.5 bg-gradient-to-br from-indigo-500 to-purple-600 shadow-xl shadow-indigo-100">
+                <div className="bg-white rounded-[14px] p-5 flex flex-col sm:flex-row justify-between items-center gap-4 relative">
+                  <div className="absolute right-0 top-1/4 bottom-1/4 w-1.5 rounded-l-full bg-indigo-500" />
+                  <div className="text-center sm:text-left">
+                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Final Net Take-home</p>
+                    <p className="text-3xl font-black text-slate-900">{formatCurrency(salaryBreakdown.netPay)}</p>
+                  </div>
+                  <div className="bg-slate-50 px-4 py-2 rounded-xl text-center">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Annual CTC</p>
+                    <p className="text-sm font-black text-slate-700">{formatCurrency(salaryBreakdown.ctc)}</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Footer: Employer Contributions */}
-              <div className="mt-4 pt-4 border-t text-xs text-gray-500 flex gap-6">
-                <span className="font-medium text-gray-400">Employer Contributions:</span>
-                <span>PF: <span className="text-gray-700 font-medium">{formatCurrency(salaryBreakdown.deductions.pf)}</span></span>
-                <span>ESI: <span className="text-gray-700 font-medium">{formatCurrency(salaryBreakdown.deductions.esi)}</span></span>
+              {/* Statutory Info */}
+              <div className="mt-6 flex flex-wrap gap-4 justify-center md:justify-start">
+                 <div className="px-3 py-1 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-500 uppercase tracking-tighter border border-slate-200">
+                   Employer PF: {formatCurrency(salaryBreakdown.employerContributions.pf)}
+                 </div>
+                 <div className="px-3 py-1 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-500 uppercase tracking-tighter border border-slate-200">
+                   Employer ESI: {formatCurrency(salaryBreakdown.employerContributions.esi)}
+                 </div>
               </div>
-
             </div>
           </div>
         </div>

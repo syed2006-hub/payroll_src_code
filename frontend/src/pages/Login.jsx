@@ -63,7 +63,7 @@ const Login = () => {
         organizationId: user.organizationId,
         onboardingCompleted: user.onboardingCompleted
       }));
-      window.location.href = user.onboardingCompleted ? `/${roleToPath(user.role)}` : '/onboarding';
+      window.location.href = user.onboardingCompleted ? `/payroll/${roleToPath(user.role)}` : '/onboarding';
     }
   }, [searchParams]);
 

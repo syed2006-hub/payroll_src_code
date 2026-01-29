@@ -2,127 +2,190 @@ import express from "express";
 import mongoose from "mongoose";
 import { authenticate, authorize } from "../middleware/auth.js";
 import User from "../models/Usermodel.js";
+import Organization from "../models/Organization.js";
 
 const router = express.Router();
 
+const superadmin = "Super Admin";
+const hradmin = "HR Admin";
+const payrolladmin = "Payroll Admin";
+const finance = "Finance";
+
+// ---------------- HELPER FUNCTIONS ----------------
+const num = (v) => (isNaN(Number(v)) ? 0 : Number(v));
+
+// Tamil Nadu Professional Tax Slab (Monthly)
+const getProfessionalTax = (monthlySalary) => {
+  if (monthlySalary <= 21000) return 0;
+  if (monthlySalary <= 30000) return 135;
+  return 200;
+};
+
+// ---------------- DASHBOARD SUMMARY ----------------
 router.get(
   "/dashboardsummary",
   authenticate,
-  authorize("Super Admin"),
+  authorize(superadmin, hradmin, payrolladmin, finance),
   async (req, res) => {
     try {
-      // 1. Authorization Check
       if (!req.user?.organizationId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
       const orgId = new mongoose.Types.ObjectId(req.user.organizationId);
 
-      // --- A. CALCULATE HISTORICAL TREND (Last 6 Months) ---
+      // ===============================
+      // A. FETCH ORGANIZATION
+      // ===============================
+      const org = await Organization.findById(orgId);
+      if (!org) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const statutory = org.statutoryConfig || {};
+
+      // ===============================
+      // B. PAYROLL TREND (LAST 6 MONTHS)
+      // ===============================
       const trendData = [];
       const today = new Date();
 
-      // Loop backwards for the last 5 months + current month (total 6)
       for (let i = 5; i >= 0; i--) {
-        const dateIterator = new Date(today.getFullYear(), today.getMonth() - i, 1);
-        const monthName = dateIterator.toLocaleString('default', { month: 'short' }); // e.g., "Aug"
-        
-        // Calculate the last day of that specific month
-        const endOfMonth = new Date(dateIterator.getFullYear(), dateIterator.getMonth() + 1, 0);
-        
-        // Format as YYYY-MM-DD to match string format in DB (or Date object if stored as Date)
-        // If your DB stores dates as strings like "2024-02-10", we use string comparison.
-        const endOfMonthString = endOfMonth.toISOString().split('T')[0];
+        const dateIterator = new Date(
+          today.getFullYear(),
+          today.getMonth() - i,
+          1
+        );
 
-        // Aggregate Sum of Salaries for employees who joined ON or BEFORE this month
+        const monthName = dateIterator.toLocaleString("default", {
+          month: "short",
+        });
+
+        const endOfMonth = new Date(
+          dateIterator.getFullYear(),
+          dateIterator.getMonth() + 1,
+          0
+        );
+
+        const endOfMonthString = endOfMonth.toISOString().split("T")[0];
+
         const monthlyStats = await User.aggregate([
           {
             $match: {
               organizationId: orgId,
-              status: "Active", // Only include currently active employees
-              "employeeDetails.basic.doj": { $lte: endOfMonthString } // Joined before month end
-            }
+              status: "Active",
+              "employeeDetails.basic.doj": { $lte: endOfMonthString },
+            },
           },
           {
             $group: {
               _id: null,
-              // Calculate Monthly Salary: CTC / 12
-              monthlyPayroll: { $sum: { $divide: ["$employeeDetails.salary.ctc", 12] } }
-            }
-          }
+              monthlyPayroll: {
+                $sum: { $divide: ["$employeeDetails.salary.ctc", 12] },
+              },
+            },
+          },
         ]);
 
         trendData.push({
           month: monthName,
-          payroll: monthlyStats[0]?.monthlyPayroll ? Math.round(monthlyStats[0].monthlyPayroll) : 0
+          payroll: Math.round(monthlyStats[0]?.monthlyPayroll || 0),
         });
       }
 
-      // --- B. CURRENT REAL-TIME OVERVIEW ---
-      
-      // 1. Total Employees & Current Payroll
-      const currentStats = await User.aggregate([
-        { 
-          $match: { 
-            organizationId: orgId,
-            status: "Active" 
-          } 
-        },
-        {
-          $group: {
-            _id: null,
-            totalEmployees: { $sum: 1 },
-            totalMonthlyPayroll: { $sum: { $divide: ["$employeeDetails.salary.ctc", 12] } }
-          }
+      // ===============================
+      // C. CURRENT EMPLOYEE STATS
+      // ===============================
+      const employees = await User.find({
+        organizationId: orgId,
+        status: "Active",
+      });
+
+      const totalEmployees = employees.length;
+
+      let totalPayroll = 0;
+      let totalDeductions = 0;
+
+      employees.forEach((emp) => {
+        const ctc = num(emp?.employeeDetails?.salary?.ctc);
+        if (!ctc) return;
+
+        const monthlySalary = ctc / 12;
+        totalPayroll += monthlySalary;
+
+        let empDeduction = 0;
+
+        // PF (Employee Contribution)
+        if (statutory.pf?.enabled) {
+          empDeduction +=
+            (monthlySalary * num(statutory.pf.employeeContribution)) / 100;
         }
-      ]);
 
-      const stats = currentStats[0] || { totalEmployees: 0, totalMonthlyPayroll: 0 };
-      const totalEmployees = stats.totalEmployees;
-      const totalPayroll = Math.round(stats.totalMonthlyPayroll);
-      const avgSalary = totalEmployees > 0 ? Math.round(totalPayroll / totalEmployees) : 0;
+        // ESI (Only if salary <= wage limit)
+        if (
+          statutory.esi?.enabled &&
+          monthlySalary <= num(statutory.esi.wageLimit)
+        ) {
+          empDeduction +=
+            (monthlySalary * num(statutory.esi.employeeContribution)) / 100;
+        }
 
-      // 2. Department Distribution
+        // Professional Tax (State based)
+        if (statutory.professionalTax?.enabled) {
+          empDeduction += getProfessionalTax(monthlySalary);
+        }
+
+        totalDeductions += empDeduction;
+      });
+
+      totalPayroll = Math.round(num(totalPayroll));
+      totalDeductions = Math.round(num(totalDeductions));
+
+      const avgSalary =
+        totalEmployees > 0
+          ? Math.round(totalPayroll / totalEmployees)
+          : 0;
+
+      // ===============================
+      // D. DEPARTMENT DISTRIBUTION
+      // ===============================
       const departmentStats = await User.aggregate([
-        { 
-          $match: { 
+        {
+          $match: {
             organizationId: orgId,
-            status: "Active" 
-          } 
+            status: "Active",
+          },
         },
         {
           $group: {
             _id: "$employeeDetails.basic.department",
-            count: { $sum: 1 }
-          }
-        }
+            count: { $sum: 1 },
+          },
+        },
       ]);
 
-      // 3. Pending Approvals
-      const pendingApprovals = await User.countDocuments({
-        organizationId: orgId,
-        $or: [{ status: "Pending" }, { onboardingCompleted: false }]
-      });
-
-      // --- C. SEND RESPONSE ---
+      // ===============================
+      // E. RESPONSE
+      // ===============================
       res.json({
         overview: {
           totalEmployees,
           totalPayroll,
-          pendingApprovals,
-          avgSalary
+          totalDeductions,
+          avgSalary,
         },
-        // Handle case where department is undefined/null
-        departmentStats: departmentStats.map(d => ({ 
-          name: d._id || "Unassigned", 
-          value: d.count 
+        departmentStats: departmentStats.map((d) => ({
+          name: d._id || "Unassigned",
+          value: d.count,
         })),
-        payrollTrend: trendData
+        payrollTrend: trendData,
       });
-
     } catch (err) {
       console.error("Dashboard error:", err);
-      res.status(500).json({ message: "Server Error", error: err.message });
+      res.status(500).json({
+        message: "Server Error",
+        error: err.message,
+      });
     }
   }
 );

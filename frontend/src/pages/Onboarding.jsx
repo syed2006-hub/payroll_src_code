@@ -8,6 +8,8 @@ const Onboarding = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { token } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
+  const roleToPath = (role) => role.toLowerCase().replace(/\s+/g, '');
 
   const [onboardingData, setOnboardingData] = useState({
     companyName: '',
@@ -45,7 +47,7 @@ const Onboarding = () => {
       const user = JSON.parse(localStorage.getItem('user'));
       user.onboardingCompleted = true;
       localStorage.setItem('user', JSON.stringify(user));
-      window.location.href = '/superadmin';
+      window.location.href = `/payroll/${roleToPath(user.role)}`;
     } catch (err) {
       setError(err.message);
       setLoading(false);

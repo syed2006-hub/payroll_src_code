@@ -12,11 +12,8 @@ import Onboarding from "./pages/Onboarding";
 import Unauthorized from "./pages/Unauthorized";
 
 
-import SuperAdminLayout from "./super_admin_component/layout/SuperAdminLayout";
-import HrAdminLayout from "./hr_component/layout/HrAdminLayout"
-import PayrollAdminLayout from "./payroll_component/layout/PayrollAdminLayout"
-import FinanceLayout from "./finance_component/layout/FinanceLayout"
-import EmployeeLayout from "./employee_component/layout/EmployeeLayout";
+import SuperAdminLayout from "./super_admin_component/layout/SuperAdminLayout"; 
+import EmployeeLayout from "./employee_component/layout/EmployeeLayout"; 
 function App() {
   return (
     <BrowserRouter>
@@ -39,56 +36,20 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Employee Dashboard */}
+          <Route path="/employee" element={ <EmployeeLayout /> }/>
 
           {/* Super Admin Portal */}
           <Route
-            path="/superadmin"
+            path="/payroll/:role"
             element={
-              <ProtectedRoute allowedRoles={["Super Admin"]}>
+              <ProtectedRoute allowedRoles={["Super Admin","HR Admin","Payroll Admin","Finance"]}>
                 <SuperAdminLayout />
               </ProtectedRoute>
             }
           />
 
-          {/* Hr Admin Portal */}
-          <Route
-            path="/hradmin"
-            element={
-              <ProtectedRoute allowedRoles={["HR Admin"]}>
-                <HrAdminLayout />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Payroll Admin Portal */}
-          <Route
-            path="/payrolladmin"
-            element={
-              <ProtectedRoute allowedRoles={["Payroll Admin"]}>
-                <PayrollAdminLayout />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Finance Admin Portal */}
-          <Route
-            path="/finance"
-            element={
-              <ProtectedRoute allowedRoles={["Finance"]}>
-                <FinanceLayout />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Employee Portal */}
-          <Route
-            path="/employee"
-            element={ 
-              <ProtectedRoute allowedRoles={["Employee"]}>
-                <EmployeeLayout />
-              </ProtectedRoute>
-            }
-          />
+           
         </Routes>
       </AuthProvider>
     </BrowserRouter>

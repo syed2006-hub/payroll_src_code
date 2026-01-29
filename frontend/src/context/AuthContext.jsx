@@ -76,7 +76,7 @@ import { API_URL } from '../config/api';
     if (data.requiresOnboarding) {
       navigate('/onboarding');
     } else {
-     navigate(`/${roleToPath(data.user.role)}`);
+     navigate(`/payroll/${roleToPath(data.user.role)}`);
     }
   } catch (err) {
     throw err;

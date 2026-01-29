@@ -3,8 +3,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { basicSchema } from "../../../validation/employeeScemas";
 import { checkEmployeeExists } from "../../../api/employeeApi";
 import { useEmployeeForm } from "../context/EmployeeFormContext";
-import { useState ,useContext,useEffect} from "react"; 
-import {AuthContext } from '..//..//..//context/AuthContext'
+import { useState, useContext, useEffect } from "react"; 
+import { AuthContext } from '..//..//..//context/AuthContext';
+import { MdInfoOutline, MdLockOutline, MdEmail, MdBadge } from "react-icons/md";
 
 const BasicDetails = ({ onNext }) => {
   const { update, employee } = useEmployeeForm();
@@ -12,32 +13,25 @@ const BasicDetails = ({ onNext }) => {
   const [duplicateError, setDuplicateError] = useState(""); 
   const { token } = useContext(AuthContext);
 
-  // Org settings
   const [orgSettings, setOrgSettings] = useState({
     roles: [],
     departments: [],
     locations: []
   });
   const [loadingSettings, setLoadingSettings] = useState(true);
- 
 
-  // Fetch org settings
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         const res = await fetch("http://localhost:5000/api/organization/settings", {
           headers: { Authorization: `Bearer ${token}` }
         });
-
         if (res.ok) {
           const data = await res.json();
           setOrgSettings({
             roles: data.roles || [],
             departments: data.departments || [],
-            locations:
-              data.locations && data.locations.length > 0
-                ? data.locations
-                : ["Head Office (Chennai)"]
+            locations: data.locations?.length > 0 ? data.locations : ["Head Office (Chennai)"]
           });
         }
       } catch (err) {
@@ -46,17 +40,12 @@ const BasicDetails = ({ onNext }) => {
         setLoadingSettings(false);
       }
     };
-
     if (token) fetchSettings();
   }, [token]);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors }
-  } = useForm({
+  const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(basicSchema),
-    defaultValues: employee.basic // Pre-fill if user goes back
+    defaultValues: employee.basic 
   });
 
   const onSubmit = async (data) => {
@@ -66,7 +55,6 @@ const BasicDetails = ({ onNext }) => {
       email: data.email,
       employeeId: data.employeeId
     });
-
     setChecking(false);
 
     if (res.exists) {
@@ -78,138 +66,164 @@ const BasicDetails = ({ onNext }) => {
     onNext();
   };
 
+  // UI Variable constants for matching theme
+  const labelClass = "text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1";
   const inputClass = (error) => 
-    `border p-2 rounded w-full outline-none focus:border-blue-500 ${error ? 'border-red-500' : 'border-gray-300'}`;
+    `w-full px-4 py-2.5 rounded-xl text-sm font-medium transition-all outline-none border 
+    ${error 
+      ? 'border-rose-300 bg-rose-50 text-rose-900 focus:ring-4 focus:ring-rose-500/10' 
+      : 'border-slate-200 bg-white text-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10'
+    }`;
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-5xl mx-auto p-6 bg-white">
-      {/* Employee Name Section - 3 Columns */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">First Name*</label>
-          <input {...register("firstName")} placeholder="First Name" className={inputClass(errors.firstName)} />
-          {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>}
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in duration-500 bg-white p-2">
+      
+      {/* 1. Name Section */}
+      <section>
+        <h3 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2">
+          <span className="w-1 h-4 bg-indigo-600 rounded-full"></span>
+          Personal Identity
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex flex-col">
+            <label className={labelClass}>First Name*</label>
+            <input {...register("firstName")} placeholder="First Name" className={inputClass(errors.firstName)} />
+            {errors.firstName && <p className="text-rose-500 text-[10px] font-bold mt-1.5 ml-1">{errors.firstName.message}</p>}
+          </div>
+          <div className="flex flex-col">
+            <label className={labelClass}>Middle Name</label>
+            <input {...register("middleName")} placeholder="Middle Name" className={inputClass()} />
+          </div>
+          <div className="flex flex-col">
+            <label className={labelClass}>Last Name</label>
+            <input {...register("lastName")} placeholder="Last Name" className={inputClass()} />
+          </div>
         </div>
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Middle Name</label>
-          <input {...register("middleName")} placeholder="Middle Name" className={inputClass()} />
-        </div>
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Last Name</label>
-          <input {...register("lastName")} placeholder="Last Name" className={inputClass()} />
-        </div>
-      </div>
+      </section>
 
-      {/* ID, Date, Email, Mobile, and Password Section */}
-      <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Employee ID*</label>
-          <input {...register("employeeId")} className={inputClass(errors.employeeId)} />
-          {errors.employeeId && <p className="text-red-500 text-xs mt-1">{errors.employeeId.message}</p>}
-        </div>
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Date of Joining*</label>
-          <input type="date" {...register("doj")} className={inputClass(errors.doj)} />
-          {errors.doj && <p className="text-red-500 text-xs mt-1">{errors.doj.message}</p>}
-        </div>
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Work Email*</label>
-          <input {...register("email")} placeholder="abc@xyz.com" className={inputClass(errors.email)} />
-          {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
-        </div>
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Mobile Number</label>
-          <input {...register("mobile")} className={inputClass()} />
-        </div>
-        {/* New Password Field */}
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Portal Password*</label>
-          <input 
-            type="password" 
-            {...register("password")} 
-            placeholder="Set portal password" 
-            className={inputClass(errors.password)} 
-          />
-          {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
-        </div>
-      </div>
+      {/* 2. Credentials Section */}
+      <section>
+        <h3 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2">
+          <span className="w-1 h-4 bg-purple-600 rounded-full"></span>
+          Work Credentials
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col">
+            <label className={labelClass}>Employee ID*</label>
+            <div className="relative">
+              <MdBadge className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input {...register("employeeId")} className={`${inputClass(errors.employeeId)} pl-11`} />
+            </div>
+            {errors.employeeId && <p className="text-rose-500 text-[10px] font-bold mt-1.5 ml-1">{errors.employeeId.message}</p>}
+          </div>
+          
+          <div className="flex flex-col">
+            <label className={labelClass}>Date of Joining*</label>
+            <input type="date" {...register("doj")} className={inputClass(errors.doj)} />
+            {errors.doj && <p className="text-rose-500 text-[10px] font-bold mt-1.5 ml-1">{errors.doj.message}</p>}
+          </div>
 
-      {/* Director Checkbox */}
-      <div className="flex items-center gap-2 text-sm text-gray-700">
-        <input type="checkbox" {...register("isDirector")} id="isDirector" className="w-4 h-4" />
-        <label htmlFor="isDirector">
-          Employee is a <strong>Director/person with substantial interest</strong> in the company. 
-          <span className="text-gray-400 ml-1">ⓘ</span>
-        </label>
-      </div>
+          <div className="flex flex-col">
+            <label className={labelClass}>Work Email*</label>
+            <div className="relative">
+              <MdEmail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input {...register("email")} placeholder="abc@xyz.com" className={`${inputClass(errors.email)} pl-11`} />
+            </div>
+            {errors.email && <p className="text-rose-500 text-[10px] font-bold mt-1.5 ml-1">{errors.email.message}</p>}
+          </div>
 
-      {/* Select Grids */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-        <div>
-          <label className="text-sm font-medium text-gray-700">Gender *</label>
-          <select {...register("gender")} className={inputClass(errors.gender)}>
-            <option value="">Select Gender</option>
-            <option>Male</option>
-            <option>Female</option>
-            <option>Others</option>
-          </select>
+          <div className="flex flex-col">
+            <label className={labelClass}>Mobile Number</label>
+            <input {...register("mobile")} className={inputClass()} />
+          </div>
+
+          <div className="flex flex-col">
+            <label className={labelClass}>Portal Password*</label>
+            <div className="relative">
+              <MdLockOutline className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input type="password" {...register("password")} placeholder="Set portal password" className={`${inputClass(errors.password)} pl-11`} />
+            </div>
+            {errors.password && <p className="text-rose-500 text-[10px] font-bold mt-1.5 ml-1">{errors.password.message}</p>}
+          </div>
         </div>
+      </section>
 
-        <div>
-          <label className="text-sm font-medium text-gray-700">Work Location *</label>
-          <select {...register("location")} className={inputClass(errors.location)}>
-            <option value="">Select Location</option>
-            {orgSettings.locations.map((loc, i) => (
-              <option key={i} value={loc}>{loc}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-gray-700">Role *</label>
-          <select {...register("role")} className={inputClass(errors.role)}>
-            <option value="">Select Role</option>
-            {orgSettings.roles.map((role, i) => (
-              <option key={i} value={role}>{role}</option>
-            ))}
-          </select>
+      {/* 3. Placement Section */}
+      <section>
+        <div className="flex items-center gap-2 mb-6 text-slate-700">
+          <input type="checkbox" {...register("isDirector")} id="isDirector" className="w-5 h-5 accent-slate-800 cursor-pointer" />
+          <label htmlFor="isDirector" className="text-xs font-bold cursor-pointer">
+            Employee is a <span className="text-indigo-600">Director / substantial interest</span> person. 
+            <MdInfoOutline className="inline ml-1 text-slate-400" size={16} />
+          </label>
         </div>
 
-        <div>
-          <label className="text-sm font-medium text-gray-700">Department *</label>
-          <select {...register("department")} className={inputClass(errors.department)}>
-            <option value="">Select Department</option>
-            {orgSettings.departments.map((dept, i) => (
-              <option key={i} value={dept}>{dept}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className={labelClass}>Gender *</label>
+            <select {...register("gender")} className={inputClass(errors.gender)}>
+              <option value="">Select Gender</option>
+              <option>Male</option>
+              <option>Female</option>
+              <option>Others</option>
+            </select>
+          </div>
 
-      {/* Portal Access Box */}
-      <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-md">
-        <div className="flex items-center gap-2 font-medium text-sm">
-          <input type="checkbox" {...register("enablePortal")} id="portal" className="w-4 h-4" />
-          <label htmlFor="portal">Enable Portal Access</label>
+          <div>
+            <label className={labelClass}>Work Location *</label>
+            <select {...register("location")} className={inputClass(errors.location)}>
+              <option value="">Select Location</option>
+              {orgSettings.locations.map((loc, i) => (
+                <option key={i} value={loc}>{loc}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Role *</label>
+            <select {...register("role")} className={inputClass(errors.role)}>
+              <option value="">Select Role</option>
+              {orgSettings.roles.map((role, i) => (
+                <option key={i} value={role}>{role}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Department *</label>
+            <select {...register("department")} className={inputClass(errors.department)}>
+              <option value="">Select Department</option>
+              {orgSettings.departments.map((dept, i) => (
+                <option key={i} value={dept}>{dept}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <p className="text-xs text-gray-500 mt-1 ml-6 leading-relaxed">
+      </section>
+
+      {/* 4. Portal Access */}
+      <div className="bg-indigo-50/50 border border-indigo-100 p-5 rounded-2xl transition-all hover:bg-indigo-50">
+        <div className="flex items-center gap-3">
+          <input type="checkbox" {...register("enablePortal")} id="portal" className="w-5 h-5 accent-indigo-600 cursor-pointer" />
+          <label htmlFor="portal" className="text-sm font-black text-indigo-900 cursor-pointer tracking-tight">Enable Employee Portal Access</label>
+        </div>
+        <p className="text-[11px] text-indigo-600 font-medium mt-1.5 ml-8 leading-relaxed">
           The employee will be able to view payslips, submit their IT declaration and create reimbursement claims through the employee portal.
         </p>
       </div>
 
-      {/* Duplicate Error Alert */}
       {duplicateError && (
-        <p className="bg-red-50 text-red-600 p-2 rounded border border-red-200 text-sm">
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 text-[11px] font-black uppercase tracking-wider animate-shake">
           {duplicateError}
-        </p>
+        </div>
       )}
 
-      {/* Footer Button */}
-      <div className="pt-4 border-t border-gray-100">
+      {/* Footer Button - Matching Dashboard Glow */}
+      <div className="pt-6 border-t border-slate-100 flex justify-end">
         <button 
           disabled={checking} 
           type="submit"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium transition-colors disabled:bg-gray-400"
+          className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-3 rounded-xl font-black text-sm transition-all shadow-lg shadow-indigo-200 active:scale-95 disabled:bg-slate-300 disabled:shadow-none"
         >
           {checking ? "Verifying..." : "Save and Continue"}
         </button>

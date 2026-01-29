@@ -1,6 +1,13 @@
 import { useEffect, useState, useContext } from "react";
 import { AuthContext } from "../../../context/AuthContext";
-import { Users, CreditCard, Clock, Activity, Calendar } from "lucide-react";
+import { Calendar } from "lucide-react";
+import { 
+  MdPeople,                // Total Employees
+  MdAccountBalanceWallet,  // Monthly Payroll
+  MdAssignmentReturn,      // Total Deductions
+  MdTrendingUp,            // Avg. Salary
+ 
+} from "react-icons/md";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 export default function Dashboard() {
@@ -19,6 +26,8 @@ export default function Dashboard() {
         });
         const result = await res.json();
         setData(result);
+        console.log(result);
+        
       } catch (error) {
         console.error("Error fetching dashboard:", error);
       } finally {
@@ -28,7 +37,12 @@ export default function Dashboard() {
     if (token) fetchData();
   }, [token]);
 
-  if (loading) return <div className="p-10 text-gray-500">Loading Dashboard...</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center h-screen bg-slate-50">
+       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+    </div>
+  );
+  
   if (!data) return <div className="p-10 text-red-500">Failed to load data</div>;
 
   const formatFullCurrency = (amount) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
@@ -41,37 +55,44 @@ export default function Dashboard() {
       
       {/* 1. Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Employees - Indigo/Violet (Stability & Growth) */}
         <StatCard 
           label="Total Employees"
           value={data.overview.totalEmployees}
           subtext="Active on payroll"
-          trend="+12%" // You can calculate this real-time if needed by comparing last month in array
-          trendText="from last month"
-          icon={<Users size={22} className="text-indigo-600" />}
-          bgIcon="bg-indigo-100"
+          trend="+12%"
+          icon={<MdPeople />}
+          colorGradient="from-indigo-500 to-purple-600"
         />
+
+        {/* Monthly Payroll - Emerald/Teal (Wealth & Success) */}
         <StatCard 
           label="Monthly Payroll"
           value={formatFullCurrency(data.overview.totalPayroll)}
-          subtext="This month's total"
+          subtext="Current month total"
           trend="+3.5%"
-          trendText="from last month"
-          icon={<CreditCard size={22} className="text-teal-600" />}
-          bgIcon="bg-teal-100"
+          icon={<MdAccountBalanceWallet />}
+          colorGradient="from-emerald-400 to-teal-600"
         />
+
+        {/* Total Deductions - Orange/Rose (Caution & Precision) */}
         <StatCard 
-          label="Pending Approvals"
-          value={data.overview.pendingApprovals}
-          subtext="Awaiting action"
-          icon={<Clock size={22} className="text-orange-600" />}
-          bgIcon="bg-orange-100"
+          label="Total Deductions"
+          value={formatFullCurrency(data.overview.totalDeductions)}
+          subtext="Statutory deductions"
+          trend="-1.2%"
+          icon={<MdAssignmentReturn />}
+          colorGradient="from-orange-400 to-rose-500"
         />
+
+        {/* Avg. Salary - Blue/Cyan (Clarity & Benchmark) */}
         <StatCard 
           label="Avg. Salary"
           value={formatFullCurrency(data.overview.avgSalary)}
-          subtext="Per employee"
-          icon={<Activity size={22} className="text-green-600" />}
-          bgIcon="bg-green-100"
+          subtext="Per employee average"
+          trend="+0.8%"
+          icon={<MdTrendingUp />}
+          colorGradient="from-blue-500 to-cyan-500"
         />
       </div>
 
@@ -79,119 +100,145 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* --- REAL PAYROLL TREND CHART --- */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h2 className="text-lg font-bold text-gray-800">Payroll Trend</h2>
-              <p className="text-sm text-gray-500">Last 6 months overview</p>
-            </div>
-            <button className="flex items-center gap-2 px-3 py-1.5 border rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
-              <Calendar size={16} />
-              FY 2024-25
-            </button>
-          </div>
+        <div className="lg:col-span-2 relative overflow-hidden rounded-2xl p-0.5 bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg">
+          <div className="bg-white/95 backdrop-blur-md rounded-[14px] p-4 md:p-6 h-full flex flex-col relative">
+            
+            {/* Right-side Accent Bar */}
+            <div className="absolute right-0 top-1/4 bottom-1/4 w-1.5 rounded-l-full bg-gradient-to-b from-indigo-500 to-purple-600" />
 
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              {/* Using data.payrollTrend from your REAL backend */}
-              <AreaChart data={data.payrollTrend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorPay" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2A9D8F" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#2A9D8F" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                
-                <XAxis 
-                  dataKey="month" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#9CA3AF', fontSize: 12 }} 
-                  dy={10}
-                />
-                
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#9CA3AF', fontSize: 12 }}
-                  // Formatter updated to show "₹8L" or "₹10L" like the image
-                  tickFormatter={(val) => `₹${(val / 100000).toFixed(1)}L`}
-                  width={80} // Added width to prevent text cutoff
-                />
-                
-                <Tooltip 
-                  formatter={(val) => [formatFullCurrency(val), "Payroll"]}
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                
-                <Area 
-                  type="monotone" 
-                  dataKey="payroll" 
-                  stroke="#2A9D8F" 
-                  strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorPay)" 
-                  activeDot={{ r: 6, strokeWidth: 0 }} // Clean active dot
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+              <div>
+                <h2 className="text-lg font-extrabold text-content-primary tracking-tight">Payroll Trend</h2>
+                <p className="text-[10px] font-bold text-content-muted uppercase tracking-widest">Last 6 months overview</p>
+              </div>
+              <button className="flex items-center gap-2 px-3 py-2 border border-surface-200 rounded-xl text-[11px] font-bold text-content-secondary hover:bg-surface-50 transition shadow-sm bg-white">
+                <Calendar size={14} className="text-indigo-600" />
+                FY 2024-25
+              </button>
+            </div>
+
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data.payrollTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorPay" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366F1" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                  
+                  <XAxis 
+                    dataKey="month" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 600 }} 
+                    dy={15}
+                  />
+                  
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 600 }}
+                    tickFormatter={(val) => `₹${(val / 100000).toFixed(1)}L`}
+                    width={70}
+                  />
+                  
+                  <Tooltip 
+                    cursor={{ stroke: '#6366F1', strokeWidth: 2 }}
+                    contentStyle={{ 
+                      borderRadius: '12px', 
+                      border: 'none', 
+                      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                      padding: '12px'
+                    }}
+                  />
+                  
+                  <Area 
+                    type="monotone" 
+                    dataKey="payroll" 
+                    stroke="#6366F1" 
+                    strokeWidth={4}
+                    fillOpacity={1} 
+                    fill="url(#colorPay)" 
+                    activeDot={{ r: 6, strokeWidth: 0, fill: '#4F46E5' }} 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
         {/* --- DEPARTMENT PIE CHART --- */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-800">By Department</h2>
-          <p className="text-sm text-gray-500">Headcount distribution</p>
-        </div>
+        <div className="relative overflow-hidden rounded-2xl p-0.5 bg-gradient-to-br from-emerald-400 to-teal-600 shadow-lg">
+          <div className="bg-white/95 backdrop-blur-md rounded-[14px] p-5 md:p-6 h-full flex flex-col relative">
+            
+            {/* Right-side Accent Bar */}
+            <div className="absolute right-0 top-1/4 bottom-1/4 w-1.5 rounded-l-full bg-gradient-to-b from-emerald-400 to-teal-600" />
 
-        <div className="h-56 relative">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data.departmentStats}
-                cx="50%"
-                cy="50%"
-                innerRadius={55}
-                outerRadius={80}
-                paddingAngle={5}
-                dataKey="value"
-              >
-                {data.departmentStats.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Custom Legend */}
-        <div className="space-y-3 mt-2">
-          {legendToShow.map((dept, idx) => (
-            <div key={idx} className="flex justify-between items-center text-sm">
-              <div className="flex items-center gap-2">
-                <span
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: COLORS[idx % COLORS.length] }}
-                />
-                <span className="text-gray-600 truncate max-w-[150px]">{dept.name}</span>
-              </div>
-              <span className="font-semibold text-gray-800">{dept.value}</span>
+            <div className="mb-6">
+              <h2 className="text-lg font-extrabold text-content-primary tracking-tight">By Department</h2>
+              <p className="text-[10px] font-bold text-content-muted uppercase tracking-widest">Headcount distribution</p>
             </div>
-          ))}
 
-          {data.departmentStats.length > 5 && (
-            <button
-              onClick={() => setShowAllLegend(!showAllLegend)}
-              className="mt-2 text-sm text-indigo-600 hover:underline"
-            >
-              {showAllLegend ? "Show Less" : "Show More"}
-            </button>
-          )}
+            <div className="h-52 relative flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={data.departmentStats}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={8}
+                    dataKey="value"
+                  >
+                    {data.departmentStats.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              {/* Total Centered Label */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-xl font-black text-content-primary leading-none">{data.overview.totalEmployees}</span>
+                <span className="text-[9px] font-bold text-content-muted uppercase">Total</span>
+              </div>
+            </div>
+
+            {/* Custom Legend */}
+            <div className="space-y-2 mt-4 flex-1">
+              {legendToShow.map((dept, idx) => (
+                <div key={idx} className="flex justify-between items-center group/item transition-colors">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                    />
+                    <span className="text-xs font-bold text-content-secondary truncate max-w-[120px] group-hover/item:text-content-primary transition-colors">
+                      {dept.name}
+                    </span>
+                  </div>
+                  <span className="text-xs font-black text-content-primary bg-surface-100 px-2 py-0.5 rounded-md">
+                    {dept.value}
+                  </span>
+                </div>
+              ))}
+
+              {data.departmentStats.length > 5 && (
+                <button
+                  onClick={() => setShowAllLegend(!showAllLegend)}
+                  className="w-full text-center mt-3 text-[10px] font-black text-indigo-600 hover:text-indigo-800 transition uppercase tracking-widest"
+                >
+                  {showAllLegend ? "Show Less" : "Show More"}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
 
       </div>
     </div>
@@ -199,28 +246,56 @@ export default function Dashboard() {
 }
 
 // Reusable Card Component
-function StatCard({ label, value, subtext, trend, trendText, icon, bgIcon }) {
+ function StatCard({ label, value, subtext, trend, icon, colorGradient }) {
+  // colorGradient example: "from-blue-500 to-indigo-600"
+  
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between h-full">
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{label}</p>
-          <h3 className="text-2xl font-bold text-gray-900 mt-2">{value}</h3>
-          <p className="text-xs text-gray-400 mt-1">{subtext}</p>
+    <div className={`relative overflow-hidden rounded-2xl p-0.5 bg-gradient-to-br ${colorGradient} shadow-lg transition-transform hover:scale-[1.02] duration-300`}>
+      
+      {/* The main white glass card */}
+      <div className="bg-white/95 backdrop-blur-md rounded-[14px] p-5 h-full flex flex-col justify-between relative">
+        
+        {/* Right-side Accent Bar */}
+        <div className={`absolute right-0 top-1/4 bottom-1/4 w-1.5 rounded-l-full bg-gradient-to-b ${colorGradient}`} />
+
+        <div className="flex justify-between items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold text-content-muted uppercase tracking-widest truncate">
+              {label}
+            </p>
+            
+            {/* Dynamic Value: Adjusts size based on length */}
+            <h3 className={`font-extrabold text-content-primary mt-1 leading-none break-all
+              ${value.length > 10 ? 'text-lg' : 'text-2xl'}
+            `}>
+              {value}
+            </h3>
+          </div>
+
+          {/* Icon with soft glass effect */}
+          <div className={`flex-shrink-0 p-2.5 rounded-xl bg-gradient-to-br ${colorGradient} text-white shadow-sm`}>
+            <span className="text-xl">{icon}</span>
+          </div>
         </div>
-        <div className={`p-3 rounded-lg ${bgIcon}`}>
-          {icon}
+
+        <div className="mt-4 flex flex-col gap-1">
+          {subtext && (
+            <p className="text-[11px] text-content-subtle font-medium truncate">
+              {subtext}
+            </p>
+          )}
+          
+          {trend && (
+            <div className="flex items-center gap-1.5">
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md 
+                ${trend.startsWith('+') ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
+                {trend}
+              </span>
+              <span className="text-[10px] text-content-muted font-medium">vs last month</span>
+            </div>
+          )}
         </div>
       </div>
-      
-      {trend && (
-        <div className="mt-4 flex items-center text-sm">
-          <span className="text-green-600 font-medium bg-green-50 px-1.5 py-0.5 rounded mr-2">
-            {trend}
-          </span>
-          <span className="text-gray-400 text-xs">{trendText}</span>
-        </div>
-      )}
     </div>
   );
 }

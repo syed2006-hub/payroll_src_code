@@ -1,34 +1,96 @@
+import { useContext, useEffect, useState } from 'react';
+import { AuthContext } from "../../../context/AuthContext";
+
+
+
+import KpiCard from '../../../components/kpiCard.jsx';
+
 export default function Dashboard() {
-  const stats = [
-    { label: "Net Salary", value: "₹68,500" },
-    { label: "Payslips", value: "24" },
-    { label: "Tax Regime", value: "New" },
-    { label: "Leaves Left", value: "12" },
-  ];
+  const { user, token } = useContext(AuthContext);
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchDashboardData = async () => {
+      try {
+        // ⛔ API NOT READY YET – PLACEHOLDER
+        // const res = await fetch(`${API_URL}/api/employee/dashboard`, {
+        //   headers: {
+        //     Authorization: `Bearer ${token}`,
+        //   },
+        // });
+        // const data = await res.json();
+
+        // setPayslips(data.payslips || []);
+        // setAttendanceSummary(data.attendanceSummary || null);
+
+      } catch (err) {
+        console.error('Dashboard fetch failed:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [token]);
+
+ 
+
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {stats.map((item) => (
-          <div
-            key={item.label}
-            className="bg-white p-5 rounded-xl shadow-sm"
-          >
-            <p className="text-sm text-gray-500">{item.label}</p>
-            <p className="text-2xl font-semibold mt-1">{item.value}</p>
-          </div>
-        ))}
+    <div className="space-y-8">
+      {/* Welcome Section */}
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold text-text-primary">
+          Welcome, {user?.name || 'Employee'}
+        </h2>
+        <p className="text-sm text-text-secondary">
+          Here’s a summary of your payroll information
+        </p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
-        <ul className="space-y-2 text-gray-600 text-sm">
-          <li>✔ Payslip for March generated</li>
-          <li>✔ Tax declaration submitted</li>
-          <li>✔ Bank details verified</li>
-          <li>✔ Profile updated</li>
-        </ul>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <KpiCard
+          title="Net Pay (This Month)"
+          value={
+           0
+          }
+          subtitle={
+            "NILL"
+          }
+          accent="green"
+        />
+
+        <KpiCard
+          title="Gross Salary"
+          value={
+            0
+          }
+          subtitle="Before deductions"
+          accent="primary"
+        />
+
+        <KpiCard
+          title="Total Deductions"
+          value={
+            0
+          }
+          subtitle="PF, PT & TDS"
+          accent="red"
+        />
+
+        <KpiCard
+          title="Payslips Available"
+          
+          subtitle="Last months"
+          accent="orange"
+        />
       </div>
+
+      
     </div>
   );
 }
