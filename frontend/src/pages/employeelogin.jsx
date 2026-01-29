@@ -1,64 +1,33 @@
-import React, { useState, useContext, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext';
+import React, { useContext, useState } from "react";
+import { AuthContext } from "../context/AuthContext";
 
 const EmployeeLogin = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useContext(AuthContext);
-  const [searchParams] = useSearchParams();
 
-  const roleToPath = (role) => role.toLowerCase().replace(/\s+/g, '');
-
-  useEffect(() => {
-    const errorParam = searchParams.get('error');
-    const token = searchParams.get('token');
-
-    if (errorParam === 'auth_failed') {
-      setError('Authentication failed');
-    } else if (errorParam === 'no_account') {
-      setError('No employee account found. Contact HR.');
-    }
-
-    if (token) {
-      const user = JSON.parse(atob(token.split('.')[1]));
-      localStorage.setItem('token', token);
-      localStorage.setItem(
-        'user',
-        JSON.stringify({
-          id: user.userId,
-          role: user.role,
-          organizationId: user.organizationId,
-          onboardingCompleted: user.onboardingCompleted,
-        })
-      );
-
-      window.location.href = user.onboardingCompleted
-        ? `/${roleToPath(user.role)}`
-        : '/onboarding';
-    }
-  }, [searchParams]);
+  const { employeeLogin } = useContext(AuthContext);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     if (!email || !password) {
-      setError('Please fill in all fields');
+      setError("Please fill in all fields");
       setLoading(false);
       return;
     }
 
     try {
-      await login(email, password);
+      await employeeLogin(email, password);
     } catch (err) {
-      setError(err.message || 'Login failed');
+      setError(err.message);
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen flex w-full">
@@ -123,7 +92,7 @@ const EmployeeLogin = () => {
               disabled={loading}
               className="w-full py-3 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 font-medium shadow disabled:opacity-70"
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>
 

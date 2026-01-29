@@ -11,7 +11,7 @@ import onboardingRoutes from './routes/onboarding.js';
 import userRoutes from './routes/users.js';
 import superadminRoutes from './routes/superadmin.js';
 import settingsRoutes from './routes/settings.route.js';
-import rolesRoutes from './routes/roles.route.js';
+import rolesRoutes from './routes/roles.route.js'; 
 
 const app = express();
 
@@ -44,7 +44,7 @@ app.use('/api/organization',rolesRoutes)
 // Test route
 app.get('/', (req, res) => {
   res.json({ message: 'Payroll API is running' });
-});
+}); 
 
 // ------------------ START SERVER ------------------
 const PORT = process.env.PORT || 5000;

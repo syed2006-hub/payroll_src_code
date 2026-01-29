@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import EmployeeProtectedRoute from "./components/employeeProtectedRoute";
 
 
 import Register from "./pages/Register";
@@ -37,7 +38,14 @@ function App() {
             }
           />
           {/* Employee Dashboard */}
-          <Route path="/employee" element={ <EmployeeLayout /> }/>
+          <Route
+            path="/employee/*"
+            element={
+              <EmployeeProtectedRoute>
+                <EmployeeLayout />
+              </EmployeeProtectedRoute>
+            }
+          />
 
           {/* Super Admin Portal */}
           <Route

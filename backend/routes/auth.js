@@ -3,8 +3,17 @@ import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import User from '../models/Usermodel.js';
 import Organization from '../models/Organization.js';
+import { employeeLogin } from "../controller/employeeLogin.controller.js";
 
 const router = express.Router();
+ 
+
+// ==================== EMPLOYEE PORTAL LOGIN ====================
+
+
+router.post("/employee/login", employeeLogin);
+
+ 
 
 // ==================== SUPER ADMIN REGISTRATION ====================
 router.post('/register-super-admin', async (req, res) => {
