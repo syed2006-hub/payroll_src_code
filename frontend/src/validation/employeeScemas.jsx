@@ -11,7 +11,7 @@ export const basicSchema = z.object({
   mobile: z.string().regex(/^[0-9]{10}$/, "Invalid mobile number").optional().or(z.literal("")),
   gender: z.enum(["Male", "Female", "Others"], { errorMap: () => ({ message: "Select gender" }) }),
   location: z.string().min(1, "Work location is required"),
-  designation: z.string().min(1, "Designation is required"),
+  role: z.string().min(1, "role is required"),
   department: z.string().min(1, "Department is required"),
   isDirector: z.boolean().default(false),
   enablePortal: z.boolean().default(true),

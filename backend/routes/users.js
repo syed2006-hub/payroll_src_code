@@ -1,6 +1,7 @@
-const express = require('express');
-const { authenticate, authorize } = require('../middleware/auth');
-const User = require('../models/Usermodel');
+import express from 'express';
+import { authenticate, authorize } from '../middleware/auth.js';
+import User from '../models/Usermodel.js';
+
 
 const router = express.Router();
 
@@ -56,7 +57,7 @@ router.post(
   authorize('Super Admin'),
   async (req, res) => {
     try {
-      const { basic } = req.body;   
+      const { basic } = req.body;
       
       // Validation
       if (!basic.firstName || !basic.password || !basic.email || !basic.department ) {
@@ -88,7 +89,7 @@ router.post(
         name: fullName,
         email: basic.email,
         password: basic.password,
-        role: basic.department, // mapping department as role
+        role: basic.role, // mapping department as role
         profileImage:'',
         organizationId: req.user.organizationId,
         onboardingCompleted: true,
@@ -237,4 +238,4 @@ router.delete(
   }
 );
 
-module.exports = router;
+export default router;

@@ -10,17 +10,13 @@ const UserManagement = () => {
 
 
 
-  const goToList = () => {
-    navigate("/superadmin?section=users&operation=list");
-  };
-
-
+ 
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 overflow-auto">
-        {operation === "add" && <AddEmployee onCancel={goToList} />}
+        {operation === "add" && <AddEmployee />}
         {operation === "list" && <EmployeeList />}
       </main>
       

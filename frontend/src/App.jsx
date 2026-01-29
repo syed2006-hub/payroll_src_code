@@ -5,6 +5,9 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import Register from "./pages/Register";
 import Login from "./pages/Login";
+import EmployeeLogin from "./pages/employeelogin";
+
+
 import Onboarding from "./pages/Onboarding";
 import Unauthorized from "./pages/Unauthorized";
 
@@ -23,6 +26,8 @@ function App() {
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/employeelogin" element={ <EmployeeLogin /> }/>
+          
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           {/* Super Admin Onboarding */}

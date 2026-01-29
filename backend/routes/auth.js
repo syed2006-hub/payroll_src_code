@@ -1,8 +1,8 @@
-const express = require('express');
-const jwt = require('jsonwebtoken');
-const passport = require('passport');
-const User = require('../models/Usermodel');
-const Organization = require('../models/Organization');
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import passport from 'passport';
+import User from '../models/Usermodel.js';
+import Organization from '../models/Organization.js';
 
 const router = express.Router();
 
@@ -246,4 +246,4 @@ router.get('/google/callback', async (req, res, next) => {
   })(req, res, next);
 });
 
-module.exports = router;
+export default router;

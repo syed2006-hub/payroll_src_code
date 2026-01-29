@@ -8,7 +8,9 @@ import {
   CheckCircle, 
   AlertCircle, 
   Edit2, 
-  X 
+  X,
+  MapPin,
+  Home
 } from "lucide-react";
 
 export default function Settings() {
@@ -24,6 +26,7 @@ export default function Settings() {
     industry: "",
     financialYearStart: "",
     financialYearEnd: "",
+    location: "", // Added Location
   });
 
   // 2. Statutory Config State
@@ -31,6 +34,7 @@ export default function Settings() {
     pf: { enabled: false, employeeContribution: 0, employerContribution: 0 },
     esi: { enabled: false, employeeContribution: 0, employerContribution: 0, wageLimit: 0 },
     professionalTax: { enabled: false, state: "" },
+    hra: { enabled: false, percentageOfBasic: 0, taxExempt: false }, // Added HRA
   });
 
   // 3. Access Levels State
@@ -53,6 +57,8 @@ export default function Settings() {
             industry: org.industry || "",
             financialYearStart: org.financialYear?.startMonth || "",
             financialYearEnd: org.financialYear?.endMonth || "",
+            // Map the first location from the array to the text string
+            location: org.location && org.location.length > 0 ? org.location[0] : "",
           });
 
           setStatutory({
@@ -70,6 +76,11 @@ export default function Settings() {
             professionalTax: {
               enabled: org.statutoryConfig?.professionalTax?.enabled ?? false,
               state: org.statutoryConfig?.professionalTax?.state ?? ""
+            },
+            hra: {
+              enabled: org.statutoryConfig?.hra?.enabled ?? false,
+              percentageOfBasic: org.statutoryConfig?.hra?.percentageOfBasic ?? 0,
+              taxExempt: org.statutoryConfig?.hra?.taxExempt ?? false
             }
           });
 
@@ -108,11 +119,13 @@ export default function Settings() {
         financialYear: {
           startMonth: companyProfile.financialYearStart,
           endMonth: companyProfile.financialYearEnd
-        }
+        },
+        // Wrap location back into an array for the backend
+        location: [companyProfile.location] 
       };
       await api.post("/settings/company-profile", payload);
       setMessage({ type: "success", text: "Company profile updated successfully!" });
-      setIsEditing(false); // Optional: Exit edit mode after save
+      setIsEditing(false); 
     } catch (err) {
       setMessage({ type: "error", text: "Failed to update company profile." });
     }
@@ -143,7 +156,6 @@ export default function Settings() {
   // Helper to manage Edit Toggle
   const toggleEditMode = () => {
     if (isEditing) {
-      // Logic if user cancels (you might want to re-fetch data here to revert changes)
       setMessage({ type: "", text: "" });
     }
     setIsEditing(!isEditing);
@@ -237,8 +249,24 @@ export default function Settings() {
               {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
+
+          {/* Location Input - Full Width */}
+          <div className="space-y-1 md:col-span-2">
+            <div className="flex items-center gap-2 mb-1">
+                <MapPin size={16} className="text-gray-500" />
+                <label className="text-sm font-medium text-gray-700">Location / Address</label>
+            </div>
+            <textarea 
+              disabled={!isEditing}
+              rows={2}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed resize-none"
+              value={companyProfile.location}
+              onChange={(e) => setCompanyProfile({...companyProfile, location: e.target.value})}
+              placeholder="Enter full organization address..."
+            />
+          </div>
         </div>
-        {/* Only show Save button if editing */}
+        
         {isEditing && (
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
                 <button onClick={saveCompanyProfile} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition">
@@ -380,6 +408,53 @@ export default function Settings() {
               </div>
             )}
           </div>
+
+          {/* NEW HRA Section */}
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+               <div className="flex items-center gap-2">
+                 <Home size={18} className="text-gray-600"/>
+                 <h3 className="font-semibold text-gray-700">House Rent Allowance (HRA)</h3>
+               </div>
+               <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
+                 <input 
+                   type="checkbox" 
+                   disabled={!isEditing}
+                   checked={statutory.hra.enabled} 
+                   onChange={(e) => setStatutory(p => ({...p, hra: {...p.hra, enabled: e.target.checked}}))}
+                   className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 disabled:text-gray-400"
+                 />
+                 <span className="text-sm font-medium text-gray-600">Enable HRA</span>
+               </label>
+            </div>
+             {statutory.hra.enabled && (
+              <div className="grid grid-cols-2 gap-4">
+                 <div>
+                    <label className="text-xs text-gray-500">Percentage of Basic (%)</label>
+                    <input 
+                      type="number" 
+                      disabled={!isEditing}
+                      className="w-full border p-2 rounded disabled:bg-gray-100 disabled:text-gray-500" 
+                      value={statutory.hra.percentageOfBasic}
+                      onChange={(e) => setStatutory(p => ({...p, hra: {...p.hra, percentageOfBasic: Number(e.target.value)}}))}
+                    />
+                 </div>
+                 <div className="flex items-end pb-3">
+                    <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
+                        <input 
+                        type="checkbox" 
+                        disabled={!isEditing}
+                        checked={statutory.hra.taxExempt} 
+                        onChange={(e) => setStatutory(p => ({...p, hra: {...p.hra, taxExempt: e.target.checked}}))}
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 disabled:text-gray-400"
+                        />
+                        <span className="text-sm text-gray-700">Tax Exempt</span>
+                    </label>
+                 </div>
+              </div>
+            )}
+          </div>
+
         </div>
         
         {isEditing && (

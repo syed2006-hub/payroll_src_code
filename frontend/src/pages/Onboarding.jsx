@@ -6,482 +6,242 @@ import { API_URL } from '../config/api';
 const Onboarding = () => {
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { token } = useContext(AuthContext);
-  const navigate = useNavigate();
 
-  const [companyProfile, setCompanyProfile] = useState({
+  const [onboardingData, setOnboardingData] = useState({
     companyName: '',
     industry: '',
-    financialYearStart: 'April',
-    financialYearEnd: 'March'
+    financialYear: { startMonth: 'April', endMonth: 'March' },
+    statutoryConfig: {
+      pf: { enabled: false, employeeContribution: 12, employerContribution: 12 },
+      esi: { enabled: false, employeeContribution: 0.75, employerContribution: 3.25, wageLimit: 21000 },
+      professionalTax: { enabled: false, state: '' },
+      hra: { enabled: true, percentageOfBasic: 40, taxExempt: true }
+    },
+    accessLevels: {
+      payrollAdmin: { canProcessPayroll: true, canApprovePayroll: true },
+      hrAdmin: { canManageEmployees: true, canManageSalaryStructure: true },
+      finance: { canViewReports: true, canExportData: true }
+    },
+    setupCompleted: true,
+    location: ['']
   });
 
-  const [statutory, setStatutory] = useState({
-    pf: { enabled: false, employeeContribution: 12, employerContribution: 12 },
-    esi: { enabled: false, employeeContribution: 0.75, employerContribution: 3.25, wageLimit: 21000 },
-    professionalTax: { enabled: false, state: '' }
-  });
-
-  const [accessLevels, setAccessLevels] = useState({
-    payrollAdmin: { canProcessPayroll: true, canApprovePayroll: true },
-    hrAdmin: { canManageEmployees: true, canManageSalaryStructure: true },
-    finance: { canViewReports: true, canExportData: true }
-  });
-
-  const handleStep1Submit = async (e) => {
+  const handleFinalSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-
+    setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/onboarding/company-profile', {
+      const res = await fetch(`${API_URL}/api/onboarding/complete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(companyProfile)
+        body: JSON.stringify(onboardingData)
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-
-      setStep(2);
+      if (!res.ok) throw new Error("Failed to save configuration");
+      
+      const user = JSON.parse(localStorage.getItem('user'));
+      user.onboardingCompleted = true;
+      localStorage.setItem('user', JSON.stringify(user));
+      window.location.href = '/superadmin';
     } catch (err) {
       setError(err.message);
+      setLoading(false);
     }
   };
-
-  const handleStep2Submit = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    try {
-      const res = await fetch('http://localhost:5000/api/onboarding/statutory-setup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(statutory)
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-
-      setStep(3);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const handleStep3Submit = async (e) => {
-  e.preventDefault();
-  setError('');
-
-  try {
-    const res = await fetch('http://localhost:5000/api/onboarding/access-levels', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(accessLevels)
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
-
-    // ✅ Update localStorage
-    const user = JSON.parse(localStorage.getItem('user'));
-    user.onboardingCompleted = true;
-    localStorage.setItem('user', JSON.stringify(user));
-
-    // ✅ Force page reload to refresh AuthContext
-    window.location.href = '/dashboard';
-  } catch (err) {
-    setError(err.message);
-  }
-};
-
-  const renderProgressBar = () => (
-    <div className="mb-8">
-      <div className="flex justify-between items-center">
-        {[1, 2, 3].map((num) => (
-          <div key={num} className="flex items-center flex-1">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-              step >= num ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-            }`}>
-              {num}
-            </div>
-            {num < 3 && (
-              <div className={`flex-1 h-1 mx-2 ${step > num ? 'bg-blue-600' : 'bg-gray-300'}`} />
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="flex justify-between mt-2 text-sm">
-        <span className={step >= 1 ? 'text-blue-600 font-medium' : 'text-gray-500'}>Company Profile</span>
-        <span className={step >= 2 ? 'text-blue-600 font-medium' : 'text-gray-500'}>Statutory Setup</span>
-        <span className={step >= 3 ? 'text-blue-600 font-medium' : 'text-gray-500'}>Access Levels</span>
-      </div>
-    </div>
-  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-center mb-2">Organization Setup</h1>
-          <p className="text-gray-600 text-center mb-8">Complete the setup to get started</p>
+    <div className="flex h-screen bg-white font-sans overflow-hidden">
+      
+      {/* LEFT SIDEBAR - Fixed */}
+      <div className="w-1/4 bg-slate-900 text-white p-10 flex flex-col shrink-0">
+        <div className="flex items-center gap-2 mb-16">
+          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-lg">💼</div>
+          <span className="text-xl font-bold tracking-tight">PayrollPro</span>
+        </div>
 
-          {renderProgressBar()}
+        <div className="space-y-8">
+          {[
+            { id: 1, label: "Company Profile" },
+            { id: 2, label: "Statutory & HRA" },
+            { id: 3, label: "Finalize Setup" }
+          ].map((s) => (
+            <div key={s.id} className={`flex items-center gap-4 ${step === s.id ? 'opacity-100' : 'opacity-40'}`}>
+              <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm ${step >= s.id ? 'bg-white text-slate-900 border-white' : 'border-slate-700'}`}>
+                {s.id}
+              </div>
+              <span className="font-semibold">{s.label}</span>
+            </div>
+          ))}
+        </div>
 
+        <div className="mt-auto text-slate-500 text-xs">
+          © 2026 PayrollPro v1.0 <br />
+          Organization Onboarding
+        </div>
+      </div>
+
+      {/* RIGHT CONTENT - Scrollable */}
+      <div className="flex-1 overflow-y-auto bg-slate-50">
+        <div className="max-w-2xl mx-auto py-20 px-10">
+          
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-medium">
               {error}
             </div>
           )}
 
+          {/* STEP 1: COMPANY INFO */}
           {step === 1 && (
-            <form onSubmit={handleStep1Submit}>
-              <h2 className="text-2xl font-bold mb-6">Step 1: Company Profile</h2>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2">Company Name</label>
-                <input
-                  type="text"
-                  value={companyProfile.companyName}
-                  onChange={(e) => setCompanyProfile({...companyProfile, companyName: e.target.value})}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2">Industry</label>
-                <select
-                  value={companyProfile.industry}
-                  onChange={(e) => setCompanyProfile({...companyProfile, industry: e.target.value})}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select Industry</option>
-                  <option value="IT Services">IT Services</option>
-                  <option value="Manufacturing">Manufacturing</option>
-                  <option value="Healthcare">Healthcare</option>
-                  <option value="Retail">Retail</option>
-                  <option value="Finance">Finance</option>
-                  <option value="Education">Education</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+              <h2 className="text-2xl font-bold text-slate-800 mb-6">Company Information</h2>
+              <div className="space-y-5">
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">Financial Year Start</label>
-                  <select
-                    value={companyProfile.financialYearStart}
-                    onChange={(e) => setCompanyProfile({...companyProfile, financialYearStart: e.target.value})}
-                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Company Name</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-blue-500 outline-none"
+                    placeholder="WAMS"
+                    value={onboardingData.companyName}
+                    onChange={(e) => setOnboardingData({...onboardingData, companyName: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Industry</label>
+                  <select 
+                    className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-white"
+                    value={onboardingData.industry}
+                    onChange={(e) => setOnboardingData({...onboardingData, industry: e.target.value})}
                   >
-                    {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(month => (
-                      <option key={month} value={month}>{month}</option>
-                    ))}
+                    <option value="">Select Industry</option>
+                    <option value="IT Services">IT Services</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Retail">Retail</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">Financial Year End</label>
-                  <select
-                    value={companyProfile.financialYearEnd}
-                    onChange={(e) => setCompanyProfile({...companyProfile, financialYearEnd: e.target.value})}
-                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(month => (
-                      <option key={month} value={month}>{month}</option>
-                    ))}
-                  </select>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Location</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-blue-500 outline-none"
+                    placeholder="Chennai, Tamil Nadu"
+                    value={onboardingData.location[0]}
+                    onChange={(e) => setOnboardingData({...onboardingData, location: [e.target.value]})}
+                  />
                 </div>
+                <button onClick={() => setStep(2)} className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition mt-4">
+                  Continue to Statutory
+                </button>
               </div>
-
-              <button
-                type="submit"
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
-              >
-                Continue to Statutory Setup
-              </button>
-            </form>
+            </div>
           )}
 
+          {/* STEP 2: STATUTORY & HRA */}
           {step === 2 && (
-            <form onSubmit={handleStep2Submit}>
-              <h2 className="text-2xl font-bold mb-6">Step 2: Statutory Configuration</h2>
-
-              <div className="mb-6 p-4 border rounded-lg">
-                <div className="flex items-center mb-4">
-                  <input
-                    type="checkbox"
-                    checked={statutory.pf.enabled}
-                    onChange={(e) => setStatutory({
-                      ...statutory,
-                      pf: {...statutory.pf, enabled: e.target.checked}
-                    })}
-                    className="mr-3 w-5 h-5"
-                  />
-                  <label className="text-lg font-semibold">Enable Provident Fund (PF)</label>
-                </div>
-                {statutory.pf.enabled && (
-                  <div className="grid grid-cols-2 gap-4 ml-8">
-                    <div>
-                      <label className="block text-sm text-gray-700 mb-1">Employee Contribution (%)</label>
-                      <input
-                        type="number"
-                        value={statutory.pf.employeeContribution}
-                        onChange={(e) => setStatutory({
-                          ...statutory,
-                          pf: {...statutory.pf, employeeContribution: parseFloat(e.target.value)}
-                        })}
-                        className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-700 mb-1">Employer Contribution (%)</label>
-                      <input
-                        type="number"
-                        value={statutory.pf.employerContribution}
-                        onChange={(e) => setStatutory({
-                          ...statutory,
-                          pf: {...statutory.pf, employerContribution: parseFloat(e.target.value)}
-                        })}
-                        className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+              <h2 className="text-2xl font-bold text-slate-800 mb-6">Statutory Details</h2>
+              <div className="space-y-6">
+                
+                {/* PF Detail */}
+                <div className="p-4 border border-slate-100 rounded-xl bg-slate-50">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="font-bold text-slate-700">Provident Fund (PF)</span>
+                    <input 
+                      type="checkbox" 
+                      className="w-5 h-5 accent-blue-600"
+                      checked={onboardingData.statutoryConfig.pf.enabled} 
+                      onChange={(e) => setOnboardingData({...onboardingData, statutoryConfig: {...onboardingData.statutoryConfig, pf: {...onboardingData.statutoryConfig.pf, enabled: e.target.checked}}})} 
+                    />
                   </div>
-                )}
-              </div>
-
-              <div className="mb-6 p-4 border rounded-lg">
-                <div className="flex items-center mb-4">
-                  <input
-                    type="checkbox"
-                    checked={statutory.esi.enabled}
-                    onChange={(e) => setStatutory({
-                      ...statutory,
-                      esi: {...statutory.esi, enabled: e.target.checked}
-                    })}
-                    className="mr-3 w-5 h-5"
-                  />
-                  <label className="text-lg font-semibold">Enable ESI (Employee State Insurance)</label>
-                </div>
-                {statutory.esi.enabled && (
-                  <div className="ml-8 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm text-gray-700 mb-1">Employee (%)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={statutory.esi.employeeContribution}
-                          onChange={(e) => setStatutory({
-                            ...statutory,
-                            esi: {...statutory.esi, employeeContribution: parseFloat(e.target.value)}
-                          })}
-                          className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-700 mb-1">Employer (%)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={statutory.esi.employerContribution}
-                          onChange={(e) => setStatutory({
-                            ...statutory,
-                            esi: {...statutory.esi, employerContribution: parseFloat(e.target.value)}
-                          })}
-                          className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
+                  {onboardingData.statutoryConfig.pf.enabled && (
+                    <div className="grid grid-cols-2 gap-4 animate-fade-in">
+                      <input type="number" placeholder="Emp %" className="p-2 border rounded text-sm" value={onboardingData.statutoryConfig.pf.employeeContribution} />
+                      <input type="number" placeholder="Empr %" className="p-2 border rounded text-sm" value={onboardingData.statutoryConfig.pf.employerContribution} />
                     </div>
-                    <div>
-                      <label className="block text-sm text-gray-700 mb-1">Wage Limit (₹)</label>
-                      <input
-                        type="number"
-                        value={statutory.esi.wageLimit}
-                        onChange={(e) => setStatutory({
-                          ...statutory,
-                          esi: {...statutory.esi, wageLimit: parseInt(e.target.value)}
-                        })}
-                        className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="mb-6 p-4 border rounded-lg">
-                <div className="flex items-center mb-4">
-                  <input
-                    type="checkbox"
-                    checked={statutory.professionalTax.enabled}
-                    onChange={(e) => setStatutory({
-                      ...statutory,
-                      professionalTax: {...statutory.professionalTax, enabled: e.target.checked}
-                    })}
-                    className="mr-3 w-5 h-5"
-                  />
-                  <label className="text-lg font-semibold">Enable Professional Tax</label>
+                  )}
                 </div>
-                {statutory.professionalTax.enabled && (
-                  <div className="ml-8">
-                    <label className="block text-sm text-gray-700 mb-1">State</label>
-                    <select
-                      value={statutory.professionalTax.state}
-                      onChange={(e) => setStatutory({
-                        ...statutory,
-                        professionalTax: {...statutory.professionalTax, state: e.target.value}
-                      })}
-                      className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required={statutory.professionalTax.enabled}
-                    >
-                      <option value="">Select State</option>
-                      <option value="Maharashtra">Maharashtra</option>
-                      <option value="Karnataka">Karnataka</option>
-                      <option value="West Bengal">West Bengal</option>
-                      <option value="Tamil Nadu">Tamil Nadu</option>
-                      <option value="Gujarat">Gujarat</option>
-                    </select>
-                  </div>
-                )}
-              </div>
 
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400 transition"
-                >
-                  Back
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
-                >
-                  Continue to Access Levels
-                </button>
+                {/* ESI Detail */}
+                <div className="p-4 border border-slate-100 rounded-xl bg-slate-50">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="font-bold text-slate-700">ESI Coverage</span>
+                    <input 
+                      type="checkbox" 
+                      className="w-5 h-5 accent-blue-600"
+                      checked={onboardingData.statutoryConfig.esi.enabled} 
+                      onChange={(e) => setOnboardingData({...onboardingData, statutoryConfig: {...onboardingData.statutoryConfig, esi: {...onboardingData.statutoryConfig.esi, enabled: e.target.checked}}})} 
+                    />
+                  </div>
+                  {onboardingData.statutoryConfig.esi.enabled && (
+                    <input type="number" placeholder="Wage Limit (₹)" className="w-full p-2 border rounded text-sm" value={onboardingData.statutoryConfig.esi.wageLimit} />
+                  )}
+                </div>
+
+                {/* Professional Tax */}
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Professional Tax State</label>
+                  <select 
+                    className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-white"
+                    value={onboardingData.statutoryConfig.professionalTax.state}
+                    onChange={(e) => setOnboardingData({...onboardingData, statutoryConfig: {...onboardingData.statutoryConfig, professionalTax: {enabled: !!e.target.value, state: e.target.value}}})}
+                  >
+                    <option value="">None</option>
+                    <option value="Tamil Nadu">Tamil Nadu</option>
+                    <option value="Maharashtra">Maharashtra</option>
+                  </select>
+                </div>
+
+                {/* HRA Detail */}
+                <div className="p-5 bg-slate-900 text-white rounded-xl">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="font-bold">HRA (% of Basic)</span>
+                    <input type="number" className="w-20 p-1 bg-slate-800 border-none rounded text-center font-bold" value={onboardingData.statutoryConfig.hra.percentageOfBasic} onChange={(e) => setOnboardingData({...onboardingData, statutoryConfig: {...onboardingData.statutoryConfig, hra: {...onboardingData.statutoryConfig.hra, percentageOfBasic: e.target.value}}})} />
+                  </div>
+                  <p className="text-xs text-slate-400">Default policy: 40% of basic salary for non-metro cities.</p>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button onClick={() => setStep(1)} className="flex-1 py-3 text-sm font-bold text-slate-400">Back</button>
+                  <button onClick={() => setStep(3)} className="flex-[2] bg-blue-600 text-white py-3 rounded-lg font-bold">Review & Finish</button>
+                </div>
               </div>
-            </form>
+            </div>
           )}
 
+          {/* STEP 3: FINAL REVIEW */}
           {step === 3 && (
-            <form onSubmit={handleStep3Submit}>
-              <h2 className="text-2xl font-bold mb-6">Step 3: Define Access Levels</h2>
-
-              <div className="mb-6 p-4 border rounded-lg bg-blue-50">
-                <h3 className="font-bold text-lg mb-3 text-blue-700">Payroll Admin Permissions</h3>
-                <div className="space-y-2 ml-4">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={accessLevels.payrollAdmin.canProcessPayroll}
-                      onChange={(e) => setAccessLevels({
-                        ...accessLevels,
-                        payrollAdmin: {...accessLevels.payrollAdmin, canProcessPayroll: e.target.checked}
-                      })}
-                      className="mr-3 w-5 h-5"
-                    />
-                    <span>Can Process Payroll</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={accessLevels.payrollAdmin.canApprovePayroll}
-                      onChange={(e) => setAccessLevels({
-                        ...accessLevels,
-                        payrollAdmin: {...accessLevels.payrollAdmin, canApprovePayroll: e.target.checked}
-                      })}
-                      className="mr-3 w-5 h-5"
-                    />
-                    <span>Can Approve Payroll</span>
-                  </label>
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+              <h2 className="text-2xl font-bold text-slate-800 mb-2">Ready to Launch?</h2>
+              <p className="text-slate-500 mb-8 text-sm">Review your settings before completing the setup.</p>
+              
+              <div className="space-y-3 mb-8">
+                <div className="flex justify-between text-sm py-2 border-b">
+                  <span className="text-slate-500">Company</span>
+                  <span className="font-bold">{onboardingData.companyName}</span>
                 </div>
-              </div>
-
-              <div className="mb-6 p-4 border rounded-lg bg-green-50">
-                <h3 className="font-bold text-lg mb-3 text-green-700">HR Admin Permissions</h3>
-                <div className="space-y-2 ml-4">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={accessLevels.hrAdmin.canManageEmployees}
-                      onChange={(e) => setAccessLevels({
-                        ...accessLevels,
-                        hrAdmin: {...accessLevels.hrAdmin, canManageEmployees: e.target.checked}
-                      })}
-                      className="mr-3 w-5 h-5"
-                    />
-                    <span>Can Manage Employees</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={accessLevels.hrAdmin.canManageSalaryStructure}
-                      onChange={(e) => setAccessLevels({
-                        ...accessLevels,
-                        hrAdmin: {...accessLevels.hrAdmin, canManageSalaryStructure: e.target.checked}
-                      })}
-                      className="mr-3 w-5 h-5"
-                    />
-                    <span>Can Manage Salary Structure</span>
-                  </label>
+                <div className="flex justify-between text-sm py-2 border-b">
+                  <span className="text-slate-500">PF Status</span>
+                  <span className="font-bold">{onboardingData.statutoryConfig.pf.enabled ? 'Enabled' : 'Disabled'}</span>
                 </div>
-              </div>
-
-              <div className="mb-6 p-4 border rounded-lg bg-purple-50">
-                <h3 className="font-bold text-lg mb-3 text-purple-700">Finance Permissions</h3>
-                <div className="space-y-2 ml-4">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={accessLevels.finance.canViewReports}
-                      onChange={(e) => setAccessLevels({
-                        ...accessLevels,
-                        finance: {...accessLevels.finance, canViewReports: e.target.checked}
-                      })}
-                      className="mr-3 w-5 h-5"
-                    />
-                    <span>Can View Reports</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={accessLevels.finance.canExportData}
-                      onChange={(e) => setAccessLevels({
-                        ...accessLevels,
-                        finance: {...accessLevels.finance, canExportData: e.target.checked}
-                      })}
-                      className="mr-3 w-5 h-5"
-                    />
-                    <span>Can Export Data</span>
-                  </label>
+                <div className="flex justify-between text-sm py-2 border-b">
+                  <span className="text-slate-500">HRA Percentage</span>
+                  <span className="font-bold">{onboardingData.statutoryConfig.hra.percentageOfBasic}%</span>
                 </div>
               </div>
 
               <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400 transition"
+                <button onClick={() => setStep(2)} className="flex-1 py-3 text-sm font-bold text-slate-400">Back</button>
+                <button 
+                  onClick={handleFinalSubmit} 
+                  disabled={loading}
+                  className="flex-[2] bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition shadow-lg shadow-green-100"
                 >
-                  Back
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
-                >
-                  Complete Setup
+                  {loading ? 'Finalizing...' : 'Complete Setup'}
                 </button>
               </div>
-            </form>
+            </div>
           )}
         </div>
       </div>

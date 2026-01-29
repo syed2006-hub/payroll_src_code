@@ -3,12 +3,52 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { basicSchema } from "../../../validation/employeeScemas";
 import { checkEmployeeExists } from "../../../api/employeeApi";
 import { useEmployeeForm } from "../context/EmployeeFormContext";
-import { useState } from "react";
+import { useState ,useContext,useEffect} from "react"; 
+import {AuthContext } from '..//..//..//context/AuthContext'
 
 const BasicDetails = ({ onNext }) => {
   const { update, employee } = useEmployeeForm();
   const [checking, setChecking] = useState(false);
-  const [duplicateError, setDuplicateError] = useState("");
+  const [duplicateError, setDuplicateError] = useState(""); 
+  const { token } = useContext(AuthContext);
+
+  // Org settings
+  const [orgSettings, setOrgSettings] = useState({
+    roles: [],
+    departments: [],
+    locations: []
+  });
+  const [loadingSettings, setLoadingSettings] = useState(true);
+ 
+
+  // Fetch org settings
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/organization/settings", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setOrgSettings({
+            roles: data.roles || [],
+            departments: data.departments || [],
+            locations:
+              data.locations && data.locations.length > 0
+                ? data.locations
+                : ["Head Office (Chennai)"]
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load org settings", err);
+      } finally {
+        setLoadingSettings(false);
+      }
+    };
+
+    if (token) fetchSettings();
+  }, [token]);
 
   const {
     register,
@@ -104,38 +144,44 @@ const BasicDetails = ({ onNext }) => {
       </div>
 
       {/* Select Grids */}
-      <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Gender*</label>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+        <div>
+          <label className="text-sm font-medium text-gray-700">Gender *</label>
           <select {...register("gender")} className={inputClass(errors.gender)}>
-            <option value="">Select</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-            <option value="Other">Others</option>
+            <option value="">Select Gender</option>
+            <option>Male</option>
+            <option>Female</option>
+            <option>Others</option>
           </select>
         </div>
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Work Location*</label>
+
+        <div>
+          <label className="text-sm font-medium text-gray-700">Work Location *</label>
           <select {...register("location")} className={inputClass(errors.location)}>
-            <option value="">Select</option>
-            <option value="Head Office">Head Office (Chennai)</option>
+            <option value="">Select Location</option>
+            {orgSettings.locations.map((loc, i) => (
+              <option key={i} value={loc}>{loc}</option>
+            ))}
           </select>
         </div>
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Designation*</label>
-          <select {...register("designation")} className={inputClass(errors.designation)}>
-            <option value="">Select</option>
-            <option value="Software Engineer">Software Engineer</option>
+
+        <div>
+          <label className="text-sm font-medium text-gray-700">Role *</label>
+          <select {...register("role")} className={inputClass(errors.role)}>
+            <option value="">Select Role</option>
+            {orgSettings.roles.map((role, i) => (
+              <option key={i} value={role}>{role}</option>
+            ))}
           </select>
         </div>
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Department*</label>
+
+        <div>
+          <label className="text-sm font-medium text-gray-700">Department *</label>
           <select {...register("department")} className={inputClass(errors.department)}>
-            <option value="">Select</option> 
-            <option value="Payroll Admin">Payroll Admin</option>
-            <option value="Employee">Employee</option>
-            <option value="HR Admin">HR Admin</option>
-            <option value="Finance">Finance</option>
+            <option value="">Select Department</option>
+            {orgSettings.departments.map((dept, i) => (
+              <option key={i} value={dept}>{dept}</option>
+            ))}
           </select>
         </div>
       </div>

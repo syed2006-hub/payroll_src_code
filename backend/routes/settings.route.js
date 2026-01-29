@@ -1,37 +1,68 @@
 // routes/settings.routes.js
-const express = require('express');
-const { authenticate, authorize } = require('../middleware/auth');
-const Organization = require('../models/Organization');
-const User = require('../models/Usermodel');
+import express from 'express';
+import { authenticate, authorize } from '../middleware/auth.js';
+import Organization from '../models/Organization.js';
+import User from '../models/Usermodel.js';
 
 const router = express.Router();
 
 // ----------------- COMPANY PROFILE -----------------
-router.post('/company-profile', authenticate, authorize('Super Admin'), async (req, res) => {
-  try {
-    const { companyName, industry, financialYearStart, financialYearEnd } = req.body;
+router.post(
+  "/company-profile",
+  authenticate,
+  authorize("Super Admin"),
+  async (req, res) => {
+    try {
+      const { companyName, industry, financialYear, location } = req.body;
 
-    if (!companyName || !industry || !financialYearStart || !financialYearEnd) {
-      return res.status(400).json({ message: 'All fields are required' });
+      // -------- VALIDATION --------
+      if (
+        !companyName ||
+        !industry ||
+        !financialYear?.startMonth ||
+        !financialYear?.endMonth
+      ) {
+        return res.status(400).json({
+          message: "Company name, industry and financial year are required"
+        });
+      }
+
+      // -------- FETCH ORG --------
+      const org = await Organization.findById(req.user.organizationId);
+      if (!org) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // -------- UPDATE COMPANY PROFILE --------
+      org.companyName = companyName;
+      org.industry = industry;
+
+      org.financialYear = {
+        startMonth: financialYear.startMonth,
+        endMonth: financialYear.endMonth
+      };
+
+      // -------- LOCATION (OPTIONAL) --------
+      if (Array.isArray(location)) {
+        org.location = location;
+      }
+
+      await org.save();
+
+      res.status(200).json({
+        message: "Company profile updated successfully",
+        organization: org
+      });
+    } catch (err) {
+      console.error("Company profile error:", err);
+      res.status(500).json({
+        message: "Server error",
+        error: err.message
+      });
     }
-
-    const org = await Organization.findById(req.user.organizationId);
-    if (!org) return res.status(404).json({ message: 'Organization not found' });
-
-    org.companyName = companyName;
-    org.industry = industry;
-    org.financialYear = {
-      startMonth: financialYearStart,
-      endMonth: financialYearEnd,
-    };
-
-    await org.save();
-    res.json({ message: 'Company profile updated', organization: org });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error', error: err.message });
   }
-});
+);
+
 
 // ----------------- STATUTORY SETUP -----------------
 router.post('/statutory-setup', authenticate, authorize('Super Admin'), async (req, res) => {
@@ -99,4 +130,4 @@ router.get('/status', authenticate, authorize('Super Admin'), async (req, res) =
   }
 });
 
-module.exports = router;
+export default router;

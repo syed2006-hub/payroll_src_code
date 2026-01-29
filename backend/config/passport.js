@@ -1,6 +1,6 @@
-const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const User = require('../models/Usermodel');
+import passport from 'passport';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import User from '../models/Usermodel.js';
 
 console.log('🔐 Passport configuration loaded');
 
@@ -9,7 +9,9 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback',
+      callbackURL:
+        process.env.GOOGLE_CALLBACK_URL ||
+        'http://localhost:5000/api/auth/google/callback',
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -21,7 +23,7 @@ passport.use(
 
         if (user) {
           console.log('✅ User found:', user.email, '| Role:', user.role);
-          
+
           // Update Google ID if not set
           if (!user.googleId) {
             user.googleId = profile.id;
@@ -29,7 +31,7 @@ passport.use(
             await user.save();
             console.log('✅ Google ID and photo saved');
           }
-          
+
           // IMPORTANT: Return the user object
           return done(null, user);
         }
@@ -37,12 +39,11 @@ passport.use(
         // User doesn't exist
         console.log('❌ No user found with email:', email);
         console.log('💡 User must be added by Super Admin first');
-        
-        // Return false with error message
-        return done(null, false, { 
-          message: 'No account found. Please contact your administrator.' 
-        });
 
+        // Return false with error message
+        return done(null, false, {
+          message: 'No account found. Please contact your administrator.',
+        });
       } catch (err) {
         console.error('❌ Google auth error:', err);
         return done(err, null);
@@ -69,4 +70,4 @@ passport.deserializeUser(async (id, done) => {
 
 console.log('✅ Passport Google Strategy configured');
 
-module.exports = passport;
+export default passport;
